@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BHARAT UNBOUND
 
-## Getting Started
+Discover India beyond the ordinary.
 
-First, run the development server:
+An editorial Indian travel discovery site with a curated, no-API itinerary planner. It runs without secrets or third-party service credentials. Saved journeys are stored in the visitor's browser.
+
+## Local development
 
 ```bash
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Verification
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint
+npx tsc --noEmit
+npm run build
+```
 
-## Learn More
+There is no automated test script configured. The planner uses local destination data, and all itinerary costs are illustrative estimates rather than live prices or bookings.
 
-To learn more about Next.js, take a look at the following resources:
+## Deploy to Vercel
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Import this Git repository in the Vercel dashboard.
+2. Keep the detected Next.js framework and repository root settings.
+3. Add no environment variables; none are required.
+4. Deploy. Vercel uses the existing `npm run build` script.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Destination and experience photography is served from Unsplash and Wikimedia Commons, so those images require a network connection. The Hampi image is credited in the interface (Vyacheslav Argenberg, CC BY 4.0).

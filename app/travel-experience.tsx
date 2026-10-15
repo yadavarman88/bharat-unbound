@@ -39,6 +39,47 @@ type TripForm = { startCity: string; budget: number; days: number; travelers: nu
 type ItineraryDay = { day: number; title: string; morning: string; afternoon: string; evening: string; food: string; estimatedCost: number };
 type SavedTrip = { id: string; destination: string; state: string; form: TripForm; itinerary: ItineraryDay[] };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isSavedTrip(value: unknown): value is SavedTrip {
+  if (!isRecord(value) || !isRecord(value.form) || !Array.isArray(value.itinerary)) return false;
+
+  const form = value.form;
+  const destination = destinations.find((item) => item.name === value.destination);
+  return typeof value.id === "string"
+    && destination?.state === value.state
+    && typeof form.startCity === "string"
+    && Object.hasOwn(cityRegions, form.startCity)
+    && typeof form.budget === "number"
+    && Number.isInteger(form.budget)
+    && form.budget >= 3000
+    && typeof form.days === "number"
+    && Number.isInteger(form.days)
+    && form.days >= 1
+    && form.days <= 14
+    && typeof form.travelers === "number"
+    && Number.isInteger(form.travelers)
+    && form.travelers >= 1
+    && form.travelers <= 12
+    && Array.isArray(form.interests)
+    && form.interests.every((interest) => typeof interest === "string" && interests.includes(interest))
+    && ["A thoughtful balance", "Keep it local", "A little more comfort"].includes(String(form.style))
+    && (form.destination === "" || destinations.some((item) => item.name === form.destination))
+    && value.itinerary.length === form.days
+    && value.itinerary.every((day, index) => isRecord(day)
+      && day.day === index + 1
+      && typeof day.title === "string"
+      && typeof day.morning === "string"
+      && typeof day.afternoon === "string"
+      && typeof day.evening === "string"
+      && typeof day.food === "string"
+      && typeof day.estimatedCost === "number"
+      && Number.isFinite(day.estimatedCost)
+      && day.estimatedCost >= 0);
+}
+
 const initialForm: TripForm = { startCity: "Mumbai", budget: 45000, days: 4, travelers: 2, interests: ["Heritage", "Food"], style: "A thoughtful balance", destination: "" };
 const cityRegions: Record<string, string> = { Mumbai: "West India", Delhi: "North India", Bengaluru: "South India", Chennai: "South India", Kolkata: "Northeast India", Hyderabad: "South India", Pune: "West India", Ahmedabad: "West India" };
 const photo = (id: string, width = 1000) => id.startsWith("http") ? id : `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${width}&q=85`;
@@ -62,8 +103,9 @@ function buildTrip(form: TripForm): SavedTrip {
     return {
       day: index + 1,
       title: ["Arrive, then take it all in", "Find your own rhythm", "A little further in", "Leave room for the unexpected"][index % 4],
-      morning: `${activities[0]}${interest ? `, with time to linger over ${interest.toLowerCase()}.` : "."}`,
-      afternoon: activities[1], evening: activities[2], food: destination.food,
+      morning: index === 0 ? `Travel from ${form.startCity} and settle into your stay.` : `${activities[0]}${interest ? `, with time to linger over ${interest.toLowerCase()}.` : "."}`,
+      afternoon: index === 0 ? `Take an easy first walk through ${destination.name}. ${activities[1]}` : activities[1],
+      evening: activities[2], food: destination.food,
       estimatedCost: Math.floor(Math.min(perPersonDay, destination.daily * styleFactor) * form.travelers),
     };
   });
@@ -83,10 +125,18 @@ export default function TravelExperience() {
         const stored = window.localStorage.getItem("bharat-unbound-saved-trips");
         if (stored) {
           const parsed: unknown = JSON.parse(stored);
-          if (Array.isArray(parsed)) setSavedTrips(parsed as SavedTrip[]);
+          const trips = Array.isArray(parsed) ? parsed.filter(isSavedTrip) : [];
+          setSavedTrips(trips);
+          if (!Array.isArray(parsed) || trips.length !== parsed.length) {
+            window.localStorage.setItem("bharat-unbound-saved-trips", JSON.stringify(trips));
+          }
         }
       } catch {
-        window.localStorage.removeItem("bharat-unbound-saved-trips");
+        try {
+          window.localStorage.removeItem("bharat-unbound-saved-trips");
+        } catch {
+          return;
+        }
       }
     });
     return () => window.cancelAnimationFrame(frame);
@@ -138,6 +188,18 @@ export default function TravelExperience() {
   }
 
   const chosenDestination = destinations.find((item) => item.name === form.destination);
+  const budgetMinimum = Math.max(3000, form.days * form.travelers * 1500);
+  const budgetMaximum = Math.max(200000, form.budget, budgetMinimum);
+  const estimatedTotal = trip?.itinerary.reduce((total, day) => total + day.estimatedCost, 0) ?? 0;
+  const stayEstimate = Math.round(estimatedTotal * 0.4);
+  const foodEstimate = Math.round(estimatedTotal * 0.25);
+  const localTravelEstimate = Math.round(estimatedTotal * 0.15);
+  const expenseBreakdown = [
+    { label: "Stay", amount: stayEstimate },
+    { label: "Food", amount: foodEstimate },
+    { label: "Local travel", amount: localTravelEstimate },
+    { label: "Experiences", amount: estimatedTotal - stayEstimate - foodEstimate - localTravelEstimate },
+  ];
 
   return (
     <main>
@@ -164,7 +226,7 @@ export default function TravelExperience() {
       <section className="planner-section" id="planner"><div className="planner-intro"><p className="eyebrow"><span className="eyebrow-rule" /> Your trip, your terms</p><h2>Start with a feeling.<br /><em>We&apos;ll find the place.</em></h2><p>Tell us what sounds like you. We’ll put together a thoughtful first draft, made from local knowledge and a little room to roam.</p><div className="planner-note"><span className="planner-note-mark" aria-hidden="true">✳</span><p>No bookings. No live prices. Just a good place to start.</p></div></div>
         <form className="planner-form" onSubmit={createTrip}><div className="form-topline"><span>PLAN A JOURNEY</span><span>01 — 06</span></div><div className="form-row form-row-two"><label className="field-label">Starting city<select value={form.startCity} onChange={(event) => updateForm("startCity", event.target.value)}>{Object.keys(cityRegions).map((city) => <option key={city}>{city}</option>)}</select></label><label className="field-label">Destination <span className="optional-label">optional</span><select value={form.destination} onChange={(event) => updateForm("destination", event.target.value)}><option value="">Surprise me</option>{destinations.map((destination) => <option key={destination.name} value={destination.name}>{destination.name}</option>)}</select></label></div>
           {chosenDestination && <p className="destination-picked">A little something in mind: <strong>{chosenDestination.name}, {chosenDestination.state}</strong></p>}
-          <div className="form-row form-row-three"><label className="field-label">Budget (INR)<div className="input-prefix"><span>₹</span><input type="number" min="3000" step="1000" required value={form.budget} onChange={(event) => updateForm("budget", Number(event.target.value))} aria-label="Total trip budget in Indian rupees" /></div></label><label className="field-label">How long?<div className="input-suffix"><input type="number" min="1" max="14" required value={form.days} onChange={(event) => updateForm("days", Number(event.target.value))} /><span>days</span></div></label><label className="field-label">Travelers<div className="input-suffix"><input type="number" min="1" max="12" required value={form.travelers} onChange={(event) => updateForm("travelers", Number(event.target.value))} /><span>people</span></div></label></div>
+          <div className="form-row form-row-three"><label className="field-label">Budget (INR)<div className="input-prefix"><span>₹</span><input type="number" min={budgetMinimum} max={budgetMaximum} step="500" required value={form.budget} onChange={(event) => updateForm("budget", Number(event.target.value))} aria-label="Total trip budget in Indian rupees" /></div><span className="field-hint">Minimum planning budget: {rupees(budgetMinimum)}</span></label><label className="field-label">How long?<div className="input-suffix"><input type="number" min="1" max="14" required value={form.days} onChange={(event) => updateForm("days", Number(event.target.value))} /><span>days</span></div></label><label className="field-label">Travelers<div className="input-suffix"><input type="number" min="1" max="12" required value={form.travelers} onChange={(event) => updateForm("travelers", Number(event.target.value))} /><span>people</span></div></label></div>
           <fieldset className="interest-fieldset"><legend>What are you drawn to? <span>Pick a few</span></legend><div className="interest-options">{interests.map((interest) => <button className={`interest-chip ${form.interests.includes(interest) ? "is-selected" : ""}`} aria-pressed={form.interests.includes(interest)} key={interest} onClick={() => toggleInterest(interest)} type="button">{form.interests.includes(interest) && <span aria-hidden="true">✓ </span>}{interest}</button>)}</div>{interestError && <p className="form-error" role="alert">{interestError}</p>}</fieldset>
           <label className="field-label travel-style-label">Your kind of travel<select value={form.style} onChange={(event) => updateForm("style", event.target.value)}><option>A thoughtful balance</option><option>Keep it local</option><option>A little more comfort</option></select></label><button className="button button-green planner-submit" type="submit">Find my kind of India <span aria-hidden="true">↗</span></button><p className="form-disclaimer">Illustrative itinerary and cost estimates only. Not a booking or price quote.</p>
         </form>
@@ -172,9 +234,10 @@ export default function TravelExperience() {
 
       {trip && <section className="itinerary-section" id="itinerary" aria-live="polite"><div className="itinerary-heading"><div><p className="eyebrow"><span className="eyebrow-rule" /> A first draft, made for you</p><h2>Your days in <em>{trip.destination}.</em></h2><p className="itinerary-location">{trip.state} <span>·</span> {trip.form.days} days <span>·</span> {trip.form.travelers} {trip.form.travelers === 1 ? "traveler" : "travelers"}</p></div><button className="button button-green save-trip-button" onClick={saveTrip} type="button"><span aria-hidden="true">＋</span> Save this journey</button></div>
         {notice && <p className="notice-message" role="status">{notice}</p>}
-        <div className="itinerary-summary"><div><span>YOUR STARTING BUDGET</span><strong>{rupees(trip.form.budget)}</strong></div><div><span>ESTIMATED TOTAL</span><strong>{rupees(trip.itinerary.reduce((total, day) => total + day.estimatedCost, 0))}</strong></div><div><span>INTERESTS IN THE MIX</span><strong>{trip.form.interests.join(" · ")}</strong></div><p>Estimates are illustrative, based on your inputs. Actual costs vary by season, availability, and personal choices.</p></div>
+        <div className="itinerary-summary"><div><span>YOUR STARTING BUDGET</span><strong>{rupees(trip.form.budget)}</strong></div><div><span>ESTIMATED TOTAL</span><strong>{rupees(estimatedTotal)}</strong></div><div><span>INTERESTS IN THE MIX</span><strong>{trip.form.interests.join(" · ")}</strong></div><p>Estimates are illustrative, based on your inputs. Actual costs vary by season, availability, and personal choices.</p></div>
+        <div className="expense-breakdown"><div className="breakdown-heading"><span>ILLUSTRATIVE EXPENSE BREAKDOWN</span><span>{rupees(estimatedTotal)} estimated total</span></div><div className="breakdown-grid">{expenseBreakdown.map((expense) => <div className="breakdown-item" key={expense.label}><div><span>{expense.label}</span><strong>{rupees(expense.amount)}</strong></div><span className="breakdown-track"><i style={{ width: `${estimatedTotal ? (expense.amount / estimatedTotal) * 100 : 0}%` }} /></span></div>)}</div><p>Planning allocation only; intercity transport, permits, and personal spending may be additional.</p></div>
         <div className="itinerary-days">{trip.itinerary.map((day) => <article className="itinerary-day" key={`${trip.id}-${day.day}`}><div className="day-number"><span>DAY</span><strong>{String(day.day).padStart(2, "0")}</strong></div><div className="day-detail"><div className="day-title-row"><h3>{day.title}</h3><span className="day-cost">~{rupees(day.estimatedCost)} <small>/ day</small></span></div><div className="day-schedule"><p><span>MORNING</span>{day.morning}</p><p><span>AFTERNOON</span>{day.afternoon}</p><p><span>EVENING</span>{day.evening}</p><p><span>AT THE TABLE</span>{day.food}</p></div></div></article>)}</div>
-        <div className="budget-optimizer"><div><p className="eyebrow"><span className="eyebrow-rule" /> Make it work for you</p><h3>A different kind of budget?</h3><p>Adjust your total and we’ll shape the days around it.</p></div><label className="budget-control"><span>Total budget <strong>{rupees(trip.form.budget)}</strong></span><input type="range" min="5000" max="200000" step="5000" value={trip.form.budget} onChange={(event) => { const updated = { ...trip.form, budget: Number(event.target.value) }; setForm(updated); setTrip({ ...buildTrip(updated), id: trip.id }); }} aria-label="Adjust your total trip budget" /><span className="range-labels"><span>₹5,000</span><span>₹2,00,000</span></span></label></div><p className="estimate-footnote">All amounts shown are illustrative estimates in Indian rupees, not live prices or booking offers.</p>
+        <div className="budget-optimizer"><div><p className="eyebrow"><span className="eyebrow-rule" /> Make it work for you</p><h3>A different kind of budget?</h3><p>Adjust your total and we’ll shape the days around it.</p></div><label className="budget-control"><span>Total budget <strong>{rupees(trip.form.budget)}</strong></span><input type="range" min={Math.max(3000, trip.form.days * trip.form.travelers * 1500)} max={Math.max(200000, trip.form.budget, trip.form.days * trip.form.travelers * 1500)} step="500" value={trip.form.budget} onChange={(event) => { const updated = { ...trip.form, budget: Number(event.target.value) }; setForm(updated); setTrip({ ...buildTrip(updated), id: trip.id }); }} aria-label="Adjust your total trip budget" /><span className="range-labels"><span>{rupees(Math.max(3000, trip.form.days * trip.form.travelers * 1500))}</span><span>{rupees(Math.max(200000, trip.form.budget, trip.form.days * trip.form.travelers * 1500))}</span></span></label></div><p className="estimate-footnote">All amounts shown are illustrative estimates in Indian rupees, not live prices or booking offers.</p>
       </section>}
 
       <section className="saved-section" id="saved-trips"><div className="saved-heading"><div><p className="eyebrow"><span className="eyebrow-rule" /> Keep a little inspiration close</p><h2>Your <em>saved</em> journeys.</h2></div><span className="saved-count">{String(savedTrips.length).padStart(2, "0")} SAVED</span></div>{savedTrips.length ? <div className="saved-grid">{savedTrips.map((saved) => { const destination = destinations.find((item) => item.name === saved.destination) ?? destinations[0]; return <article className="saved-card" key={saved.id}><div className="saved-image" style={{ backgroundImage: `url("${photo(destination.image, 700)}")` }} role="img" aria-label={`${saved.destination}, ${saved.state}`}>{destination.credit && <span className="photo-credit">{destination.credit}</span>}</div><div className="saved-card-info"><p className="location-label">{saved.state} <span>·</span> {saved.form.days} days</p><h3>{saved.destination}</h3><p>{rupees(saved.form.budget)} · {saved.form.travelers} {saved.form.travelers === 1 ? "traveler" : "travelers"}</p><button className="text-link" onClick={() => { setTrip(saved); setForm(saved.form); window.setTimeout(() => document.getElementById("itinerary")?.scrollIntoView({ behavior: "smooth" }), 80); }} type="button">Revisit this journey <span aria-hidden="true">↗</span></button><button className="remove-trip" onClick={() => removeSavedTrip(saved.id)} type="button" aria-label={`Remove ${saved.destination} from saved trips`}>Remove</button></div></article>; })}</div> : <div className="saved-empty"><span className="saved-empty-symbol" aria-hidden="true">✳</span><p>No journeys tucked away just yet.</p><a href="#planner">Start dreaming <span aria-hidden="true">↗</span></a></div>}</section>

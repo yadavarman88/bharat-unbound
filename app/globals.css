@@ -132,6 +132,7 @@ button { color: inherit; }
 .optional-label { color: #97978f; font-weight: 400; font-size: 9px; }
 .field-label select, .field-label input { width: 100%; min-width: 0; height: 39px; border: 1px solid #ddded6; border-radius: 0; padding: 0 10px; outline: none; background: #fffefa; color: var(--ink); font-size: 11px; }
 .field-label select:focus, .field-label input:focus { border-color: var(--green); box-shadow: 0 0 0 2px rgba(38,75,56,.1); }
+.field-hint { color: var(--muted); font-size: 8px; font-weight: 400; }
 .input-prefix, .input-suffix { height: 39px; display: flex; align-items: center; border: 1px solid #ddded6; background: #fffefa; }
 .input-prefix:focus-within, .input-suffix:focus-within { border-color: var(--green); box-shadow: 0 0 0 2px rgba(38,75,56,.1); }
 .input-prefix > span { padding-left: 10px; color: #7b7d74; font-size: 11px; }
@@ -166,6 +167,16 @@ button { color: inherit; }
 .itinerary-summary strong { font: 400 20px var(--serif); }
 .itinerary-summary > div:last-of-type strong { font: 400 12px/1.6 var(--sans); }
 .itinerary-summary > p { grid-column: 1 / -1; margin: 0; color: #85877d; font-size: 9px; }
+.expense-breakdown { padding: 20px 0; border-bottom: 1px solid var(--line); }
+.breakdown-heading { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 8px; letter-spacing: 1px; text-transform: uppercase; }
+.breakdown-heading span:last-child { color: var(--green); letter-spacing: 0; text-transform: none; }
+.breakdown-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 17px; margin-top: 17px; }
+.breakdown-item > div { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.breakdown-item > div span { color: var(--muted); font-size: 9px; }
+.breakdown-item > div strong { font: 400 14px var(--serif); white-space: nowrap; }
+.breakdown-track { display: block; height: 3px; margin-top: 9px; background: #e9e7df; }
+.breakdown-track i { display: block; height: 100%; background: var(--terracotta); }
+.expense-breakdown > p { margin: 13px 0 0; color: #85877d; font-size: 9px; line-height: 1.6; }
 .itinerary-days { margin-top: 4px; }
 .itinerary-day { display: grid; grid-template-columns: 70px 1fr; gap: 16px; padding: 23px 0; border-bottom: 1px solid var(--line); }
 .day-number { display: flex; flex-direction: column; gap: 4px; padding-top: 3px; color: var(--terracotta); }
@@ -311,6 +322,8 @@ button { color: inherit; }
   .itinerary-summary { grid-template-columns: 1fr 1fr; gap: 18px 12px; }
   .itinerary-summary > div:last-of-type { grid-column: 1 / -1; }
   .itinerary-summary strong { font-size: 17px; }
+  .breakdown-grid { grid-template-columns: 1fr 1fr; gap: 16px 12px; }
+  .breakdown-heading { font-size: 7px; }
   .itinerary-day { grid-template-columns: 44px 1fr; gap: 10px; padding: 19px 0; }
   .day-number strong { font-size: 22px; }
   .day-title-row { align-items: start; flex-direction: column; gap: 6px; }
