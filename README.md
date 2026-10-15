@@ -4,6 +4,8 @@ Discover India beyond the ordinary.
 
 An editorial Indian travel discovery site with a curated, no-API itinerary planner. It runs without secrets or third-party service credentials. Saved journeys are stored in the visitor's browser.
 
+The planner includes destination and seasonal filters, cost breakdowns by category, deterministic itinerary explanations, trip comparison, cultural bookmarks, a travel checklist, and print-to-PDF output. Weather guidance is seasonal, not a live forecast; prices are estimates, not quotes or bookings. Saved journeys do not sync across devices.
+
 ## Local development
 
 ```bash
