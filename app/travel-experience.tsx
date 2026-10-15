@@ -61,6 +61,16 @@ const destinationDetails: Record<string, DestinationDetails> = {
   Chettinad: { kind: "Heritage & food", familyFriendly: true, bestTime: "November to February", bestMonths: ["November", "December", "January", "February"], duration: "2–3 days", budgetRange: [3000, 7000], highlights: ["Chettinad mansions", "Athangudi tile workshops", "Karaikudi markets"], culture: "The Chettiar merchant community's historic homes, handcrafted tiles, and distinctive culinary traditions define this region.", tips: ["Confirm mansion visiting hours with local hosts.", "Ask artisans before photographing workshops or their work."], nearby: ["Hampi", "Varanasi"], seasons: { Winter: "Cooler weather is generally comfortable for exploring heritage homes and markets.", Summer: "Southern heat can be strong; plan outdoor visits early.", Monsoon: "Carry rain protection and confirm site access locally.", Autumn: "Warm conditions continue; check dates around local festivals." } },
 };
 
+const activityRates: Record<string, { guided: number; selfGuided: number }> = {
+  Hampi: { guided: 900, selfGuided: 250 },
+  Jaisalmer: { guided: 1500, selfGuided: 400 },
+  Varanasi: { guided: 1000, selfGuided: 250 },
+  Meghalaya: { guided: 1700, selfGuided: 600 },
+  "Majuli Island": { guided: 700, selfGuided: 200 },
+  "Ziro Valley": { guided: 900, selfGuided: 300 },
+  Chettinad: { guided: 800, selfGuided: 250 },
+};
+
 const experiences = [
   { number: "01", title: "At the table", kind: "Cuisine", text: "Follow a region from its market stalls to the family kitchen. Every landscape has a flavor of its own.", image: "photo-1546833999-b9f581a1996d" },
   { number: "02", title: "Made by hand", kind: "Traditional arts", text: "Meet the potters, weavers, painters, and woodworkers keeping generations of craft in motion.", image: "photo-1452860606245-08befc0ff44b" },
@@ -69,12 +79,21 @@ const experiences = [
 ];
 
 type TripForm = { startCity: string; budget: number; days: number; travelers: number; interests: string[]; destination: string; region: string; month: string; travelStyle: string; accommodation: string; transportation: string; dietary: string; accessibility: string; budgetMode: string };
-type TripCosts = { stay: number; food: number; transport: number; activities: number };
+type TripCosts = { stay: number; food: number; transport: number; localTransport: number; activities: number; miscellaneous: number };
 type ItineraryDay = { day: number; title: string; morning: string; afternoon: string; evening: string; food: string; estimatedCost: number; costs: TripCosts };
 type SavedTrip = { id: string; name: string; destination: string; state: string; form: TripForm; itinerary: ItineraryDay[]; checklist: string[] };
+type TravelProfile = Pick<TripForm, "days" | "interests" | "region" | "month" | "travelStyle" | "accommodation" | "transportation" | "dietary" | "accessibility" | "budgetMode">;
+type ScenarioDraft = { form: TripForm; replacePaidActivity: boolean };
+type CompanionMessage = { question: string; answer: string; action?: "open-savings" | "add-day" };
 
 const initialForm: TripForm = { startCity: "Mumbai", budget: 45000, days: 4, travelers: 2, interests: ["Heritage", "Food"], destination: "", region: "", month: "October", travelStyle: "Balanced", accommodation: "Comfortable stay", transportation: "Shared local transport", dietary: "No preference", accessibility: "No specific needs", budgetMode: "Balanced" };
 const cityRegions: Record<string, string> = { Mumbai: "West India", Delhi: "North India", Bengaluru: "South India", Chennai: "South India", Kolkata: "Northeast India", Hyderabad: "South India", Pune: "West India", Ahmedabad: "West India" };
+const demoPresets: { name: string; key: string; form: TripForm }[] = [
+  { name: "Cultural", key: "cultural", form: { ...initialForm, destination: "Hampi", region: "South India", travelStyle: "Cultural", interests: ["Heritage", "Local Culture"], budgetMode: "Balanced" } },
+  { name: "Budget-conscious", key: "budget", form: { ...initialForm, destination: "Jaisalmer", region: "West India", travelStyle: "Cultural", accommodation: "Guesthouse", transportation: "Public transport", budgetMode: "Budget", interests: ["Heritage", "Food"] } },
+  { name: "Nature-focused", key: "nature", form: { ...initialForm, destination: "Meghalaya", region: "Northeast India", days: 5, travelStyle: "Nature", interests: ["Nature", "Adventure"] } },
+  { name: "Family pace", key: "family", form: { ...initialForm, destination: "Chettinad", region: "South India", days: 3, travelers: 4, travelStyle: "Cultural", accessibility: "Prefer less walking", interests: ["Heritage", "Food"] } },
+];
 
 function normalizeSavedTrip(value: unknown): SavedTrip | null {
   if (!isRecord(value) || !isRecord(value.form) || !Array.isArray(value.itinerary)) return null;
@@ -85,10 +104,13 @@ function normalizeSavedTrip(value: unknown): SavedTrip | null {
   const itinerary = value.itinerary.map((rawDay) => {
     if (!isRecord(rawDay) || typeof rawDay.estimatedCost !== "number") return null;
     const total = Math.max(0, rawDay.estimatedCost);
-    const stay = Math.round(total * 0.4);
-    const food = Math.round(total * 0.25);
-    const transport = Math.round(total * 0.15);
-    return { ...rawDay, costs: isRecord(rawDay.costs) ? rawDay.costs : { stay, food, transport, activities: total - stay - food - transport } } as unknown as ItineraryDay;
+    const stay = Math.round(total * 0.35);
+    const food = Math.round(total * 0.23);
+    const transport = Math.round(total * 0.17);
+    const localTransport = Math.round(total * 0.08);
+    const activities = Math.round(total * 0.13);
+    const costs = isTripCosts(rawDay.costs) ? rawDay.costs : { stay, food, transport, localTransport, activities, miscellaneous: total - stay - food - transport - localTransport - activities };
+    return { ...rawDay, costs } as unknown as ItineraryDay;
   });
   if (itinerary.some((day) => day === null)) return null;
   const normalized: SavedTrip = { id: value.id, name: typeof value.name === "string" ? value.name : `A journey in ${destination.name}`, destination: destination.name, state: destination.state, form, itinerary: itinerary as ItineraryDay[], checklist: Array.isArray(value.checklist) ? value.checklist.filter((item): item is string => typeof item === "string" && checklistItems.includes(item)) : [] };
@@ -101,7 +123,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isTripCosts(value: unknown): value is TripCosts {
   return isRecord(value)
-    && [value.stay, value.food, value.transport, value.activities].every((cost) => typeof cost === "number" && Number.isFinite(cost) && cost >= 0);
+    && [value.stay, value.food, value.transport, value.localTransport, value.activities, value.miscellaneous].every((cost) => typeof cost === "number" && Number.isFinite(cost) && cost >= 0);
 }
 
 function isSavedTrip(value: unknown): value is SavedTrip {
@@ -152,7 +174,7 @@ function isSavedTrip(value: unknown): value is SavedTrip {
       && Number.isFinite(day.estimatedCost)
       && day.estimatedCost >= 0
       && isTripCosts(day.costs)
-      && day.costs.stay + day.costs.food + day.costs.transport + day.costs.activities === day.estimatedCost);
+      && day.costs.stay + day.costs.food + day.costs.transport + day.costs.localTransport + day.costs.activities + day.costs.miscellaneous === day.estimatedCost);
 }
 
 const photo = (id: string, width = 1000) => id.startsWith("http") ? id : `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${width}&q=85`;
@@ -193,12 +215,14 @@ function buildTrip(form: TripForm): SavedTrip {
     const interest = form.interests[index % Math.max(form.interests.length, 1)];
     const dailyBase = destination.daily * modeFactor * seasonalFactor;
     const costs: TripCosts = {
-      stay: Math.round(dailyBase * 0.4 * accommodationFactor * form.travelers),
-      food: Math.round(dailyBase * 0.25 * (form.dietary === "No preference" ? 1 : 1.08) * form.travelers),
-      transport: Math.round(dailyBase * 0.15 * transportFactor * form.travelers),
-      activities: Math.round(dailyBase * 0.2 * (form.travelStyle === "Adventure" ? 1.15 : 1) * form.travelers),
+      stay: Math.round(dailyBase * 0.35 * accommodationFactor * form.travelers),
+      food: Math.round(dailyBase * 0.23 * (form.dietary === "No preference" ? 1 : 1.08) * form.travelers),
+      transport: Math.round(dailyBase * 0.17 * transportFactor * form.travelers),
+      localTransport: Math.round(dailyBase * 0.08 * transportFactor * form.travelers),
+      activities: activityEstimate(form, destination.name, "guided"),
+      miscellaneous: Math.round(dailyBase * 0.04 * form.travelers),
     };
-    const estimatedCost = costs.stay + costs.food + costs.transport + costs.activities;
+    const estimatedCost = costs.stay + costs.food + costs.transport + costs.localTransport + costs.activities + costs.miscellaneous;
     return {
       day: index + 1,
       title: ["Arrive, then take it all in", "Find your own rhythm", "A little further in", "Leave room for the unexpected"][index % 4],
@@ -210,6 +234,140 @@ function buildTrip(form: TripForm): SavedTrip {
     };
   });
   return { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, name: `A ${form.travelStyle.toLowerCase()} journey in ${destination.name}`, destination: destination.name, state: destination.state, form: { ...form, interests: [...form.interests] }, itinerary, checklist: [] };
+}
+
+function emptyCosts(): TripCosts {
+  return { stay: 0, food: 0, transport: 0, localTransport: 0, activities: 0, miscellaneous: 0 };
+}
+
+function totalTripCost(value: SavedTrip) {
+  return value.itinerary.reduce((sum, day) => sum + day.estimatedCost, 0);
+}
+
+function totalTripCategories(value: SavedTrip) {
+  return value.itinerary.reduce((total, day) => ({
+    stay: total.stay + day.costs.stay,
+    food: total.food + day.costs.food,
+    transport: total.transport + day.costs.transport,
+    localTransport: total.localTransport + day.costs.localTransport,
+    activities: total.activities + day.costs.activities,
+    miscellaneous: total.miscellaneous + day.costs.miscellaneous,
+  }), emptyCosts());
+}
+
+function activityEstimate(form: TripForm, destinationName: string, option: "guided" | "selfGuided") {
+  const rates = activityRates[destinationName] ?? activityRates.Hampi;
+  const modeFactor = form.budgetMode === "Budget" ? 0.82 : form.budgetMode === "Comfort" ? 1.28 : 1;
+  const seasonalFactor = destinationDetails[destinationName]?.bestMonths.includes(form.month) ? 1.08 : 1;
+  const styleFactor = form.travelStyle === "Adventure" ? 1.15 : 1;
+  return Math.round(rates[option] * modeFactor * seasonalFactor * styleFactor * form.travelers);
+}
+
+function lowerCostActivityAlternative(value: SavedTrip): SavedTrip {
+  const itinerary = value.itinerary.map((day) => {
+    const costs = { ...day.costs, activities: Math.min(day.costs.activities, activityEstimate(value.form, value.destination, "selfGuided")) };
+    const estimatedCost = Object.values(costs).reduce((sum, amount) => sum + amount, 0);
+    return { ...day, evening: "Replace a guided stop with a self-guided walk or public viewpoint.", costs, estimatedCost };
+  });
+  return { ...value, itinerary };
+}
+
+function makeScenario(draft: ScenarioDraft): SavedTrip {
+  const generated = buildTrip(draft.form);
+  return draft.replacePaidActivity ? lowerCostActivityAlternative(generated) : generated;
+}
+
+function isTravelProfile(value: unknown): value is TravelProfile {
+  return isRecord(value)
+    && typeof value.days === "number"
+    && Number.isInteger(value.days)
+    && value.days >= 1
+    && value.days <= 14
+    && Array.isArray(value.interests)
+    && value.interests.every((interest) => typeof interest === "string" && interests.includes(interest))
+    && typeof value.region === "string"
+    && (value.region === "" || ["North India", "South India", "West India", "Northeast India"].includes(value.region))
+    && months.includes(String(value.month))
+    && travelStyles.includes(String(value.travelStyle))
+    && accommodationOptions.includes(String(value.accommodation))
+    && transportationOptions.includes(String(value.transportation))
+    && dietaryOptions.includes(String(value.dietary))
+    && accessibilityOptions.includes(String(value.accessibility))
+    && budgetModes.includes(String(value.budgetMode));
+}
+
+function explainCompanionQuestion(question: string, trip: SavedTrip): CompanionMessage {
+  const normalized = question.toLowerCase();
+  const destination = destinations.find((item) => item.name === trip.destination) ?? destinations[0];
+  const details = destinationDetails[destination.name];
+  const total = totalTripCost(trip);
+  const costs = totalTripCategories(trip);
+  const expensiveCategory = [...Object.entries(costs)].sort((a, b) => b[1] - a[1])[0];
+  const dayMatch = normalized.match(/day\s*(\d+)/);
+
+  if (normalized.includes("why") || normalized.includes("recommend")) {
+    const matched = trip.form.interests.filter((interest) => destination.interests.includes(interest));
+    return { question, answer: `${destination.name} fits your ${trip.form.travelStyle.toLowerCase()} style and ${trip.form.month} travel month. ${matched.length ? `It overlaps with your ${matched.join(" and ")} interests.` : `Your current interests are ${trip.form.interests.join(", ") || "open-ended"}; this destination was also ranked for your ${destination.region} preference and ${trip.form.budgetMode.toLowerCase()} budget mode.`}` };
+  }
+  if (dayMatch) {
+    const dayNumber = Number(dayMatch[1]);
+    const day = trip.itinerary.find((item) => item.day === dayNumber);
+    return day
+      ? { question, answer: `Day ${day.day} in ${destination.name}: morning, ${day.morning} Afternoon, ${day.afternoon} Evening, ${day.evening} Estimated group cost: ${rupees(day.estimatedCost)}.` }
+      : { question, answer: `This trip is ${trip.form.days} days long, so it does not currently include a Day ${dayNumber}.`, action: dayNumber === trip.form.days + 1 ? "add-day" : undefined };
+  }
+  if (normalized.includes("20%") || normalized.includes("reduce") || normalized.includes("save") || normalized.includes("cheaper") || normalized.includes("cost")) {
+    const target = Math.round(total * 0.8);
+    const cheaperForm = { ...trip.form, budgetMode: "Budget", accommodation: "Guesthouse", transportation: "Public transport" };
+    const optimized = lowerCostActivityAlternative(buildTrip(cheaperForm));
+    const optimizedTotal = totalTripCost(optimized);
+    return { question, answer: `The current estimate is ${rupees(total)} for the group. A model using guesthouses, public transport, Budget mode, and self-guided activity alternatives estimates ${rupees(optimizedTotal)} (${Math.round((1 - optimizedTotal / Math.max(total, 1)) * 100)}% lower). Your 20% target is ${rupees(target)}. These are local planning estimates, not quoted savings.`, action: "open-savings" };
+  }
+  if (normalized.includes("expensive") || normalized.includes("activities")) {
+    const day = [...trip.itinerary].sort((a, b) => b.costs.activities - a.costs.activities)[0];
+    const selfGuidedEstimate = activityEstimate(trip.form, destination.name, "selfGuided");
+    return { question, answer: `The largest cost category is ${expensiveCategory[0]} at ${rupees(expensiveCategory[1])} total. Day ${day.day} has the highest activity allocation at ${rupees(day.costs.activities)}. The curated self-guided activity estimate for ${destination.name} is ${rupees(selfGuidedEstimate)} per group/day, compared with the guided rate in your itinerary. The what-if panel can compare those rates; neither is a live quote.` , action: "open-savings" };
+  }
+  if (normalized.includes("pack") || normalized.includes("weather")) {
+    return { question, answer: `${getSeason(trip.form.month)} guidance for ${destination.name}: ${details.seasons[getSeason(trip.form.month)]} Consider packing ${getSeason(trip.form.month) === "Monsoon" ? "a light waterproof layer and shoes with grip" : getSeason(trip.form.month) === "Winter" ? "a warm morning layer and comfortable walking shoes" : "sun protection, water, and comfortable walking shoes"}. General guidance only; this is not a live forecast.` };
+  }
+  if (normalized.includes("food") || normalized.includes("eat")) {
+    return { question, answer: trip.form.dietary === "No preference" ? `A local specialty to ask about in ${destination.name}: ${destination.food}. Ask before photographing cooks or vendors.` : `The region is known for ${destination.food}. With your ${trip.form.dietary} preference, confirm suitable alternatives with individual restaurants or hosts; this planner cannot verify menus.` };
+  }
+  if (normalized.includes("extra day") || normalized.includes("one more day")) {
+    if (trip.form.days >= 14) return { question, answer: "This planner currently caps trips at 14 days. Your current itinerary is already at that limit." };
+    const extraDay = destination.days[trip.itinerary.length % destination.days.length];
+    return { question, answer: `An additional day ${trip.itinerary.length + 1} in ${destination.name} could include ${extraDay[0]}, then ${extraDay[1]}, and ${extraDay[2]}. The simulator will recalculate the extra day's estimated costs without changing your saved plan.`, action: "add-day" };
+  }
+  if (normalized.includes("family")) {
+    const suitability = details.familyFriendly ? `${destination.name} is marked family-friendly in the curated destination notes.` : `${destination.name} is not marked family-friendly in the curated notes; some routes may involve strenuous walking.`;
+    return { question, answer: `${suitability} For a gentler pace, shorten walking routes, schedule rest breaks, and verify access directly with local venues. The what-if controls let you switch to a relaxed, lower-walking scenario.` };
+  }
+  if (normalized.includes("verify") || normalized.includes("before travel") || normalized.includes("reservation")) {
+    return { question, answer: `Before travel to ${destination.name}, verify current opening hours, transport or ferry schedules, road conditions, permit requirements, accessibility, dietary options, and any accommodation or ticket reservations directly with providers. This planner does not verify live information.` };
+  }
+  return { question, answer: "I can answer using this itinerary's destinations, day plan, preferences, and estimates. Try asking about a day, the budget, costly activities, packing, local food, family pace, or what to verify." };
+}
+
+function alternativeDestinations(trip: SavedTrip) {
+  const current = destinations.find((item) => item.name === trip.destination) ?? destinations[0];
+  const currentDailyPerPerson = Math.ceil(totalTripCost(trip) / Math.max(trip.form.days * trip.form.travelers, 1));
+  return destinations.filter((item) => item.name !== current.name).map((item) => {
+    const alternativeTrip = buildTrip({ ...trip.form, destination: item.name, region: item.region });
+    const estimatedDaily = Math.ceil(totalTripCost(alternativeTrip) / Math.max(trip.form.days * trip.form.travelers, 1));
+    const sharedInterests = trip.form.interests.filter((interest) => item.interests.includes(interest));
+    const lowerCost = estimatedDaily < currentDailyPerPerson;
+    const sameRegion = item.region === current.region;
+    const styleMatch = (trip.form.travelStyle === "Nature" && item.interests.includes("Nature")) || (trip.form.travelStyle === "Cultural" && item.interests.includes("Heritage")) || (trip.form.travelStyle === "Adventure" && item.interests.includes("Adventure"));
+    const durationRange = destinationDetails[item.name].duration.match(/(\d+)[–-](\d+)/);
+    const recommendedDays = durationRange ? [Number(durationRange[1]), Number(durationRange[2])] : [trip.form.days, trip.form.days];
+    const durationMatch = trip.form.days >= recommendedDays[0] && trip.form.days <= recommendedDays[1];
+    const score = sharedInterests.length * 3 + (lowerCost ? 2 : 0) + (sameRegion ? 1 : 0) + (styleMatch ? 2 : 0) + (durationMatch ? 1 : 0) + (destinationDetails[item.name].bestMonths.includes(trip.form.month) ? 1 : 0);
+    const reason = lowerCost
+      ? `Lower preference-adjusted estimate (${rupees(estimatedDaily)} vs ${rupees(currentDailyPerPerson)} per person/day), with ${sharedInterests.length ? `shared ${sharedInterests.slice(0, 2).join(" and ")} interests` : "a different regional experience"}.`
+      : `${sharedInterests.length ? `Shares your ${sharedInterests.slice(0, 2).join(" and ")} interests` : `Offers a ${destinationDetails[item.name].kind.toLowerCase()} experience`}${sameRegion ? " in the same region" : ` in ${item.region}`}.`;
+    return { destination: item, score, reason, estimatedDaily };
+  }).sort((a, b) => b.score - a.score).slice(0, 3);
 }
 
 export default function TravelExperience() {
@@ -228,6 +386,11 @@ export default function TravelExperience() {
   const [tripNameDraft, setTripNameDraft] = useState("");
   const [editingSavedTripId, setEditingSavedTripId] = useState<string | null>(null);
   const [explorerFilters, setExplorerFilters] = useState({ region: "All regions", budget: "Any budget", style: "Any style", type: "Any type", familyFriendly: false, culture: false, nature: false });
+  const [travelProfile, setTravelProfile] = useState<TravelProfile | null>(null);
+  const [profileStatus, setProfileStatus] = useState("");
+  const [scenario, setScenario] = useState<ScenarioDraft | null>(null);
+  const [companionQuestion, setCompanionQuestion] = useState("");
+  const [companionMessages, setCompanionMessages] = useState<CompanionMessage[]>([]);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -262,9 +425,25 @@ export default function TravelExperience() {
       } catch {
         try { window.localStorage.removeItem("bharat-unbound-saved-experiences"); } catch {}
       }
+      try {
+        const storedProfile = window.localStorage.getItem("bharat-unbound-travel-profile");
+        if (storedProfile) {
+          const parsedProfile: unknown = JSON.parse(storedProfile);
+          if (isTravelProfile(parsedProfile)) setTravelProfile(parsedProfile);
+          else window.localStorage.removeItem("bharat-unbound-travel-profile");
+        }
+      } catch {
+        try { window.localStorage.removeItem("bharat-unbound-travel-profile"); } catch {}
+      }
     });
     return () => window.cancelAnimationFrame(frame);
   }, []);
+
+  useEffect(() => {
+    if (!trip) return;
+    const frame = window.requestAnimationFrame(() => setCompanionMessages([]));
+    return () => window.cancelAnimationFrame(frame);
+  }, [trip]);
 
   function updateForm<K extends keyof TripForm>(key: K, value: TripForm[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -288,6 +467,8 @@ export default function TravelExperience() {
     setTrip(generated);
     setEditingSavedTripId(null);
     setShowExplanation(false);
+    setScenario(null);
+    setCompanionMessages([]);
     setNotice("");
     window.setTimeout(() => document.getElementById("itinerary")?.scrollIntoView({ behavior: "smooth" }), 80);
   }
@@ -372,6 +553,8 @@ export default function TravelExperience() {
     setForm(saved.form);
     setEditingSavedTripId(saved.id);
     setShowExplanation(false);
+    setScenario(null);
+    setCompanionMessages([]);
     window.setTimeout(() => document.getElementById("itinerary")?.scrollIntoView({ behavior: "smooth" }), 80);
   }
 
@@ -379,18 +562,117 @@ export default function TravelExperience() {
     setExplorerFilters((current) => ({ ...current, [key]: value }));
   }
 
+  function saveCurrentTravelProfile() {
+    const profile: TravelProfile = { days: form.days, interests: [...form.interests], region: form.region, month: form.month, travelStyle: form.travelStyle, accommodation: form.accommodation, transportation: form.transportation, dietary: form.dietary, accessibility: form.accessibility, budgetMode: form.budgetMode };
+    try {
+      window.localStorage.setItem("bharat-unbound-travel-profile", JSON.stringify(profile));
+      setTravelProfile(profile);
+      setProfileStatus("Your preferences are saved on this browser.");
+    } catch {
+      setProfileStatus("Browser storage is unavailable; your profile was not saved.");
+    }
+  }
+
+  function applyTravelProfile() {
+    if (!travelProfile) return;
+    setForm((current) => ({ ...current, ...travelProfile, budget: Math.max(current.budget, minimumTripBudget(travelProfile.days, current.travelers)), destination: current.destination && travelProfile.region && destinations.find((item) => item.name === current.destination)?.region !== travelProfile.region ? "" : current.destination }));
+    setProfileStatus("Saved preferences applied to this plan.");
+  }
+
+  function resetTravelProfile() {
+    try {
+      window.localStorage.removeItem("bharat-unbound-travel-profile");
+      setTravelProfile(null);
+      setForm((current) => ({ ...current, ...initialForm, interests: [...initialForm.interests] }));
+      setProfileStatus("Saved travel profile cleared from this browser.");
+    } catch {
+      setProfileStatus("Browser storage is unavailable; the saved profile could not be cleared.");
+    }
+  }
+
+  function openScenario(changes: Partial<TripForm> = {}, replacePaidActivity = false) {
+    if (!trip) return;
+    setScenario({ form: { ...trip.form, ...changes }, replacePaidActivity });
+  }
+
+  function updateScenarioForm<K extends keyof TripForm>(key: K, value: TripForm[K]) {
+    setScenario((current) => {
+      if (!current) return current;
+      const form = { ...current.form, [key]: value };
+      if (key === "days" || key === "travelers") form.budget = Math.max(form.budget, minimumTripBudget(form.days, form.travelers));
+      return { ...current, form };
+    });
+  }
+
+  function applyScenario() {
+    if (!trip || !scenario) return;
+    const result = makeScenario(scenario);
+    setTrip({ ...result, id: trip.id, name: trip.name, checklist: [...trip.checklist] });
+    setForm(scenario.form);
+    setScenario(null);
+    setCompanionMessages([]);
+    setNotice("What-if scenario applied. Save this journey to keep the updated version.");
+  }
+
+  function askTravelCompanion(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    submitCompanionQuestion(companionQuestion);
+  }
+
+  function submitCompanionQuestion(question: string) {
+    if (!trip || !question.trim()) return;
+    const response = explainCompanionQuestion(question.trim().slice(0, 300), trip);
+    setCompanionMessages((current) => [...current, response]);
+    setCompanionQuestion("");
+  }
+
+  function followCompanionSuggestion(action: CompanionMessage["action"]) {
+    if (!trip || !action) return;
+    if (action === "open-savings") openScenario({ budgetMode: "Budget", accommodation: "Guesthouse", transportation: "Public transport" }, true);
+    else openScenario({ days: Math.min(14, trip.form.days + 1) });
+    document.getElementById("scenario-simulator")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  function loadDemoTrip(key: string) {
+    const preset = demoPresets.find((item) => item.key === key);
+    if (!preset) return;
+    const nextForm = { ...preset.form, interests: [...preset.form.interests] };
+    const generated = buildTrip(nextForm);
+    generated.name = `Demo · ${preset.name} trip`;
+    setForm(nextForm);
+    setTrip(generated);
+    setEditingSavedTripId(null);
+    setScenario(null);
+    setCompanionMessages([]);
+    setNotice("Demonstration itinerary loaded. It has not been saved.");
+    window.setTimeout(() => document.getElementById("itinerary")?.scrollIntoView({ behavior: "smooth" }), 80);
+  }
+
+  function replaceTripDestination(destination: Destination) {
+    if (!trip) return;
+    const nextForm = { ...trip.form, destination: destination.name, region: destination.region };
+    const replacement = buildTrip(nextForm);
+    setForm(nextForm);
+    setTrip({ ...replacement, id: trip.id, name: `A journey in ${destination.name}`, checklist: trip.checklist });
+    setCompanionMessages([]);
+    setScenario(null);
+    setNotice(`${destination.name} is now the active destination. Save to update this trip.`);
+  }
+
   const chosenDestination = destinations.find((item) => item.name === form.destination);
   const budgetMinimum = minimumTripBudget(form.days, form.travelers);
   const budgetMaximum = maximumBudget;
   const estimatedTotal = trip?.itinerary.reduce((total, day) => total + day.estimatedCost, 0) ?? 0;
-  const costTotals: TripCosts = trip?.itinerary.reduce((total, day) => ({ stay: total.stay + day.costs.stay, food: total.food + day.costs.food, transport: total.transport + day.costs.transport, activities: total.activities + day.costs.activities }), { stay: 0, food: 0, transport: 0, activities: 0 }) ?? { stay: 0, food: 0, transport: 0, activities: 0 };
+  const costTotals: TripCosts = trip?.itinerary.reduce((total, day) => ({ stay: total.stay + day.costs.stay, food: total.food + day.costs.food, transport: total.transport + day.costs.transport, localTransport: total.localTransport + day.costs.localTransport, activities: total.activities + day.costs.activities, miscellaneous: total.miscellaneous + day.costs.miscellaneous }), { stay: 0, food: 0, transport: 0, localTransport: 0, activities: 0, miscellaneous: 0 }) ?? { stay: 0, food: 0, transport: 0, localTransport: 0, activities: 0, miscellaneous: 0 };
   const budgetRemaining = trip ? trip.form.budget - estimatedTotal : 0;
   const budgetUtilization = trip && trip.form.budget ? Math.round((estimatedTotal / trip.form.budget) * 100) : 0;
   const expenseBreakdown = [
     { label: "Stay", amount: costTotals.stay },
     { label: "Food", amount: costTotals.food },
-    { label: "Transport", amount: costTotals.transport },
+    { label: "Intercity transport", amount: costTotals.transport },
+    { label: "Local transport", amount: costTotals.localTransport },
     { label: "Experiences", amount: costTotals.activities },
+    { label: "Miscellaneous", amount: costTotals.miscellaneous },
   ];
   const filteredDestinations = destinations.filter((destination) => {
     const details = destinationDetails[destination.name];
@@ -413,6 +695,14 @@ export default function TravelExperience() {
   const lodgingSavings = trip ? Math.max(0, Math.round(costTotals.stay * (1 - 0.72 / accommodationFactor))) : 0;
   const transportSavings = trip ? Math.max(0, Math.round(costTotals.transport * (1 - 0.72 / transportFactor))) : 0;
   const travelTips = activeDetails && trip ? [...activeDetails.tips, ...(trip.form.accessibility !== "No specific needs" ? ["Confirm route accessibility directly with local venues and transport providers; access conditions can change."] : []), ...(trip.form.dietary !== "No preference" ? [`Confirm ${trip.form.dietary.toLowerCase()} meal options with individual restaurants or hosts.`] : [])] : [];
+  const rankedAlternatives = trip ? alternativeDestinations(trip) : [];
+  const scenarioTrip = scenario ? makeScenario(scenario) : null;
+  const scenarioTotal = scenarioTrip ? totalTripCost(scenarioTrip) : 0;
+  const scenarioCosts = scenarioTrip ? totalTripCategories(scenarioTrip) : emptyCosts();
+  const scenarioChange = scenarioTotal - estimatedTotal;
+  const scenarioChangePercent = estimatedTotal ? Math.round((scenarioChange / estimatedTotal) * 100) : 0;
+  const readinessPercent = trip ? Math.round((trip.checklist.length / checklistItems.length) * 100) : 0;
+  const contingencyEstimate = Math.round(estimatedTotal * 0.1);
 
   return (
     <main>
@@ -445,7 +735,7 @@ export default function TravelExperience() {
 
       <section className="experience-section" id="experiences"><div className="experience-topline"><p className="eyebrow"><span className="eyebrow-rule" /> The good stuff, up close</p><label className="culture-filter">Explore by theme<select value={cultureFilter} onChange={(event) => setCultureFilter(event.target.value)}><option>All experiences</option>{experiences.map((experience) => <option key={experience.kind}>{experience.kind}</option>)}</select></label></div><div className="experience-heading"><h2>Get to know India<br /><em>by getting into it.</em></h2><p>Regional foodways, living crafts, and cultural traditions are best experienced with curiosity, permission, and local knowledge.</p></div><div className="experience-grid">{visibleExperiences.map((experience) => <article className="experience-card" key={experience.number}><div className="experience-image" role="img" aria-label={`${experience.kind} in India`} style={{ backgroundImage: `url("${photo(experience.image, 760)}")` }}><span>{experience.number}</span></div><p className="location-label">{experience.kind}</p><h3>{experience.title}</h3><p className="experience-description">{experience.text}</p><div className="experience-actions"><a className="experience-link" href="#planner">Make room for it <span aria-hidden="true">↗</span></a><button className="text-link" type="button" aria-pressed={savedExperienceIds.includes(experience.number)} onClick={() => toggleSavedExperience(experience.number)}>{savedExperienceIds.includes(experience.number) ? "Saved ✓" : "Save experience"}</button></div></article>)}</div><p className="responsible-note">Travel thoughtfully: ask before photographing people, follow local guidance at sacred sites, and choose locally owned experiences where possible.</p></section>
 
-      <section className="planner-section" id="planner"><div className="planner-intro"><p className="eyebrow"><span className="eyebrow-rule" /> Your trip, your terms</p><h2>Start with a feeling.<br /><em>We&apos;ll find the place.</em></h2><p>Tell us what sounds like you. We’ll put together a thoughtful first draft, made from local knowledge and a little room to roam.</p><div className="planner-note"><span className="planner-note-mark" aria-hidden="true">✳</span><p>No bookings. No live prices. Just a good place to start.</p></div></div>
+      <section className="planner-section" id="planner"><div className="planner-intro"><p className="eyebrow"><span className="eyebrow-rule" /> Your trip, your terms</p><h2>Start with a feeling.<br /><em>We&apos;ll find the place.</em></h2><p>Tell us what sounds like you. We’ll put together a thoughtful first draft, made from local knowledge and a little room to roam.</p><div className="planner-note"><span className="planner-note-mark" aria-hidden="true">✳</span><p>No bookings. No live prices. Just a good place to start.</p></div><div className="demo-presets"><p className="eyebrow"><span className="eyebrow-rule" /> A quick demo, if you like</p><p>Load a curated sample itinerary. Demo plans are not saved until you choose to save them.</p><div>{demoPresets.map((preset) => <button key={preset.key} type="button" onClick={() => loadDemoTrip(preset.key)}>{preset.name}</button>)}</div></div></div>
         <form className="planner-form" onSubmit={createTrip}>
           <div className="form-topline"><span>PLAN A JOURNEY</span><span>YOUR INDIA, YOUR PACE</span></div>
           <div className="form-row form-row-two">
@@ -466,20 +756,30 @@ export default function TravelExperience() {
           <fieldset className="interest-fieldset"><legend>What are you drawn to? <span>Pick a few</span></legend><div className="interest-options">{interests.map((interest) => <button className={`interest-chip ${form.interests.includes(interest) ? "is-selected" : ""}`} aria-pressed={form.interests.includes(interest)} key={interest} onClick={() => toggleInterest(interest)} type="button">{form.interests.includes(interest) && <span aria-hidden="true">✓ </span>}{interest}</button>)}</div>{interestError && <p className="form-error" role="alert">{interestError}</p>}</fieldset>
           <div className="form-row form-row-three preference-row"><label className="field-label">Travel style<select value={form.travelStyle} onChange={(event) => updateForm("travelStyle", event.target.value)}>{travelStyles.map((style) => <option key={style}>{style}</option>)}</select></label><label className="field-label">Accommodation<select value={form.accommodation} onChange={(event) => updateForm("accommodation", event.target.value)}>{accommodationOptions.map((option) => <option key={option}>{option}</option>)}</select></label><label className="field-label">Getting around<select value={form.transportation} onChange={(event) => updateForm("transportation", event.target.value)}>{transportationOptions.map((option) => <option key={option}>{option}</option>)}</select></label></div>
           <div className="form-row form-row-two preference-row"><label className="field-label">Dietary preference<select value={form.dietary} onChange={(event) => updateForm("dietary", event.target.value)}>{dietaryOptions.map((option) => <option key={option}>{option}</option>)}</select></label><label className="field-label">Accessibility<select value={form.accessibility} onChange={(event) => updateForm("accessibility", event.target.value)}>{accessibilityOptions.map((option) => <option key={option}>{option}</option>)}</select></label></div>
+          <div className="profile-manager"><div><p className="eyebrow"><span className="eyebrow-rule" /> Your travel profile</p><p>{travelProfile ? "A profile is saved locally on this browser." : "Save your usual style for your next visit."}</p></div><div><button type="button" onClick={saveCurrentTravelProfile}>Save these preferences</button><button type="button" disabled={!travelProfile} onClick={applyTravelProfile}>Use saved profile</button><button type="button" disabled={!travelProfile} onClick={resetTravelProfile}>Reset profile</button></div>{profileStatus && <p className="profile-status" role="status">{profileStatus}</p>}</div>
           <button className="button button-green planner-submit" type="submit">Find my kind of India <span aria-hidden="true">↗</span></button><p className="form-disclaimer">Curated itinerary and cost estimates only. Seasonal notes are general guidance, not a live forecast.</p>
         </form>
       </section>
 
       {trip && activeDetails && <section className="itinerary-section" id="itinerary" aria-live="polite"><div className="itinerary-heading"><div><p className="eyebrow"><span className="eyebrow-rule" /> A first draft, made for you</p><h2>{trip.name}</h2><p className="itinerary-location">{trip.destination}, {trip.state} <span>·</span> {trip.form.month} <span>·</span> {trip.form.days} days <span>·</span> {trip.form.travelers} {trip.form.travelers === 1 ? "traveler" : "travelers"}</p></div><div className="itinerary-actions"><button className="button button-outline-green" onClick={() => window.print()} type="button">Print / Save PDF <span aria-hidden="true">↗</span></button><button className="button button-green save-trip-button" onClick={saveTrip} type="button"><span aria-hidden="true">＋</span> Save this journey</button></div></div>
         {notice && <p className="notice-message" role="status">{notice}</p>}
-        <div className="budget-metrics"><div><span>ESTIMATED TRIP COST</span><strong>{rupees(estimatedTotal)}</strong></div><div><span>PER TRAVELLER</span><strong>{rupees(Math.ceil(estimatedTotal / trip.form.travelers))}</strong></div><div><span>BUDGET REMAINING</span><strong className={budgetRemaining < 0 ? "over-budget" : ""}>{rupees(budgetRemaining)}</strong></div><div><span>BUDGET USED</span><strong className={budgetUtilization > 100 ? "over-budget" : ""}>{budgetUtilization}%</strong></div></div>
+        <div className="budget-metrics"><div><span>ESTIMATED TRIP COST</span><strong>{rupees(estimatedTotal)}</strong></div><div><span>PER TRAVELLER</span><strong>{rupees(Math.ceil(estimatedTotal / trip.form.travelers))}</strong></div><div><span>AVERAGE / DAY</span><strong>{rupees(Math.ceil(estimatedTotal / trip.form.days))}</strong></div><div><span>BUDGET REMAINING</span><strong className={budgetRemaining < 0 ? "over-budget" : ""}>{rupees(budgetRemaining)}</strong></div><div><span>BUDGET USED</span><strong className={budgetUtilization > 100 ? "over-budget" : ""}>{budgetUtilization}%</strong></div></div>
         {budgetRemaining < 0 && <div className="budget-alert" role="status"><strong>This draft is {rupees(Math.abs(budgetRemaining))} over your budget.</strong><span>Try a guesthouse, local transport, or Budget mode below; each recalculates the estimate.</span></div>}
         <div className="itinerary-summary"><div><span>YOUR MAXIMUM BUDGET</span><strong>{rupees(trip.form.budget)}</strong></div><div><span>DESTINATION</span><strong>{activeDestination?.region}</strong></div><div><span>PLANNING FOR</span><strong>{trip.form.travelStyle} · {trip.form.budgetMode}</strong></div><p>All amounts are illustrative estimates, not live prices, bookings, or quotes. Intercity transport and personal purchases may be additional.</p></div>
-        <div className="expense-breakdown"><div className="breakdown-heading"><span>ESTIMATED EXPENSE BREAKDOWN</span><span>{rupees(estimatedTotal)} total · {rupees(Math.ceil(estimatedTotal / trip.form.travelers))} per traveller</span></div><div className="breakdown-grid">{expenseBreakdown.map((expense) => <div className="breakdown-item" key={expense.label}><div><span>{expense.label}</span><strong>{rupees(expense.amount)}</strong></div><span className="breakdown-track"><i style={{ width: `${estimatedTotal ? (expense.amount / estimatedTotal) * 100 : 0}%` }} /></span></div>)}</div><p>Costs recalculate from your accommodation, transport, dietary, seasonal, and budget-mode preferences. These are planning estimates, not live rates.</p></div>
+        <div className="expense-breakdown"><div className="breakdown-heading"><span>ESTIMATED EXPENSE BREAKDOWN</span><span>{rupees(estimatedTotal)} total · {rupees(Math.ceil(estimatedTotal / trip.form.travelers))} per traveller</span></div><div className="breakdown-grid">{expenseBreakdown.map((expense) => <div className="breakdown-item" key={expense.label}><div><span>{expense.label}</span><strong>{rupees(expense.amount)}</strong></div><span className="breakdown-track"><i style={{ width: `${estimatedTotal ? (expense.amount / estimatedTotal) * 100 : 0}%` }} /></span></div>)}</div><p>Estimates model your accommodation, food, intercity transport, local transport, activities, and miscellaneous allowance. No live rates or availability are used.</p><p className="contingency-note">Suggested 10% contingency: {rupees(contingencyEstimate)}. This optional buffer is not included in the trip estimate.</p></div>
         <div className="optimizer-panel"><div className="optimizer-heading"><div><p className="eyebrow"><span className="eyebrow-rule" /> Adjust the actual estimate</p><h3>Make the numbers feel right.</h3><p>Each change rebuilds your day-by-day cost calculation.</p></div><label className="budget-control"><span>Maximum budget <strong>{rupees(trip.form.budget)}</strong></span><input type="range" min={minimumTripBudget(trip.form.days, trip.form.travelers)} max={maximumBudget} step="500" value={trip.form.budget} onChange={(event) => { const updated = { ...trip.form, budget: Number(event.target.value) }; setForm(updated); setTrip({ ...buildTrip(updated), id: trip.id, name: trip.name, checklist: trip.checklist }); }} aria-label="Adjust maximum trip budget" /><span className="range-labels"><span>{rupees(minimumTripBudget(trip.form.days, trip.form.travelers))}</span><span>{rupees(maximumBudget)}</span></span></label></div><div className="optimizer-options"><label>Budget mode<select value={trip.form.budgetMode} onChange={(event) => { const updated = { ...trip.form, budgetMode: event.target.value }; setForm(updated); setTrip({ ...buildTrip(updated), id: trip.id, name: trip.name, checklist: trip.checklist }); }}>{budgetModes.map((mode) => <option key={mode}>{mode}</option>)}</select></label><label>Stay<select value={trip.form.accommodation} onChange={(event) => { const updated = { ...trip.form, accommodation: event.target.value }; setForm(updated); setTrip({ ...buildTrip(updated), id: trip.id, name: trip.name, checklist: trip.checklist }); }}>{accommodationOptions.map((option) => <option key={option}>{option}</option>)}</select></label><label>Transport<select value={trip.form.transportation} onChange={(event) => { const updated = { ...trip.form, transportation: event.target.value }; setForm(updated); setTrip({ ...buildTrip(updated), id: trip.id, name: trip.name, checklist: trip.checklist }); }}>{transportationOptions.map((option) => <option key={option}>{option}</option>)}</select></label></div><div className="savings-options"><strong>Potential savings at these estimates</strong><p>{lodgingSavings ? `Guesthouse instead of ${trip.form.accommodation}: about ${rupees(lodgingSavings)} less.` : "Your current stay selection is already the lowest-cost option in this planner."}</p><p>{transportSavings ? `Shared local transport instead of ${trip.form.transportation}: about ${rupees(transportSavings)} less.` : "Your current transport selection is already the lowest-cost option in this planner."}</p></div></div>
-        <div className="itinerary-days"><div className="itinerary-subheading"><h3>Day by day</h3><span>Morning · Afternoon · Evening</span></div>{trip.itinerary.map((day) => <article className="itinerary-day" key={`${trip.id}-${day.day}`}><div className="day-number"><span>DAY</span><strong>{String(day.day).padStart(2, "0")}</strong></div><div className="day-detail"><div className="day-title-row"><h4>{day.title}</h4><span className="day-cost">~{rupees(day.estimatedCost)} <small>/ group / day</small></span></div><div className="day-schedule"><p><span>MORNING</span>{day.morning}</p><p><span>AFTERNOON</span>{day.afternoon}</p><p><span>EVENING</span>{day.evening}</p><p><span>AT THE TABLE</span>{day.food}</p></div><p className="day-cost-detail">Stay {rupees(day.costs.stay)} · Food {rupees(day.costs.food)} · Transport {rupees(day.costs.transport)} · Activities {rupees(day.costs.activities)}</p></div></article>)}</div>
-        <div className="itinerary-support-grid"><section className="tips-panel"><p className="eyebrow"><span className="eyebrow-rule" /> Before you go</p><h3>{getSeason(trip.form.month)} in {trip.destination}</h3><p className="season-guidance">{activeDetails.seasons[getSeason(trip.form.month)]} General seasonal guidance only; this is not a live weather forecast.</p><ul>{travelTips.map((tip) => <li key={tip}>{tip}</li>)}</ul></section><section className="checklist-panel"><p className="eyebrow"><span className="eyebrow-rule" /> Your travel checklist</p><h3>Ready when you are.</h3><div className="checklist-items">{checklistItems.map((item) => <label key={item}><input type="checkbox" checked={trip.checklist.includes(item)} onChange={() => toggleChecklistItem(item)} /><span>{item}</span></label>)}</div><p>Checklist progress is saved with this trip when you save it in this browser.</p></section></div>
+        <div className="itinerary-days"><div className="itinerary-subheading"><h3>Day by day</h3><span>Morning · Afternoon · Evening</span></div>{trip.itinerary.map((day) => <article className="itinerary-day" key={`${trip.id}-${day.day}`}><div className="day-number"><span>DAY</span><strong>{String(day.day).padStart(2, "0")}</strong></div><div className="day-detail"><div className="day-title-row"><h4>{day.title}</h4><span className="day-cost">~{rupees(day.estimatedCost)} <small>/ group / day</small></span></div><div className="day-schedule"><p><span>MORNING</span>{day.morning}</p><p><span>AFTERNOON</span>{day.afternoon}</p><p><span>EVENING</span>{day.evening}</p><p><span>AT THE TABLE</span>{day.food}</p></div><p className="day-cost-detail">Stay {rupees(day.costs.stay)} · Food {rupees(day.costs.food)} · Intercity {rupees(day.costs.transport)} · Local travel {rupees(day.costs.localTransport)} · Activities {rupees(day.costs.activities)} · Misc {rupees(day.costs.miscellaneous)}</p></div></article>)}</div>
+        <div className="itinerary-support-grid"><section className="tips-panel"><p className="eyebrow"><span className="eyebrow-rule" /> Before you go</p><h3>{getSeason(trip.form.month)} in {trip.destination}</h3><p className="season-guidance">{activeDetails.seasons[getSeason(trip.form.month)]} General seasonal guidance only; this is not a live weather forecast.</p><ul>{travelTips.map((tip) => <li key={tip}>{tip}</li>)}</ul></section><section className="checklist-panel"><p className="eyebrow"><span className="eyebrow-rule" /> Your travel checklist</p><h3>Ready when you are.</h3><div className="readiness-score"><span>Checklist readiness</span><strong>{readinessPercent}%</strong><i style={{ width: `${readinessPercent}%` }} /></div><div className="checklist-items">{checklistItems.map((item) => <label key={item}><input type="checkbox" checked={trip.checklist.includes(item)} onChange={() => toggleChecklistItem(item)} /><span>{item}</span></label>)}</div><p>Score = checked checklist items ÷ {checklistItems.length}. This records your in-app progress only; documents and reservations are not verified.</p></section></div>
         <section className="explain-panel"><div><p className="eyebrow"><span className="eyebrow-rule" /> Made from your trip data</p><h3>Explain my itinerary</h3></div><button className="text-link" type="button" aria-expanded={showExplanation} onClick={() => setShowExplanation((current) => !current)}>{showExplanation ? "Hide explanation" : "See why this fits"} <span aria-hidden="true">↗</span></button>{showExplanation && <ul><li><strong>Destination fit:</strong> {trip.destination} matches your {trip.form.travelStyle.toLowerCase()} style, {trip.form.interests.join(" and ") || "open-ended"} interests, and {trip.form.region || "any-region"} preference.</li><li><strong>Order:</strong> Day one allows for travel from {trip.form.startCity}; later days follow curated local experiences at a steadier pace.</li><li><strong>Budget:</strong> This draft estimates {rupees(estimatedTotal)} against your {rupees(trip.form.budget)} maximum ({budgetUtilization}% used). Accommodation and transport preferences are included.</li><li><strong>Largest category:</strong> {biggestExpense.label} is the biggest estimate at {rupees(biggestExpense.amount)}. {lodgingSavings || transportSavings ? `Choosing a guesthouse or shared transport could save up to ${rupees(lodgingSavings + transportSavings)} in this model.` : "Your selected stay and transport are already at the lower-cost settings."}</li><li><strong>Verify before travel:</strong> Confirm opening hours, route accessibility, ferry/road access, permits, and dietary arrangements with local providers.</li><li><strong>Estimates:</strong> Prices are illustrative planning allocations, not live quotes, availability, bookings, or forecasts.</li></ul>}</section>
+        <section className="scenario-panel" id="scenario-simulator"><div className="feature-panel-heading"><div><p className="eyebrow"><span className="eyebrow-rule" /> Explore a different version</p><h3>What if your trip changed?</h3><p>Compare a scenario without changing the current itinerary. Apply it or discard it when you are ready.</p></div>{!scenario && <button className="button button-outline-green" type="button" onClick={() => openScenario()}>Build a scenario</button>}</div>
+          {scenario && scenarioTrip && <><div className="scenario-controls"><label>Maximum budget<input type="number" min={minimumTripBudget(scenario.form.days, scenario.form.travelers)} max={maximumBudget} step="500" value={scenario.form.budget} onChange={(event) => updateScenarioForm("budget", Number(event.target.value))} /></label><label>Days<input type="number" min="1" max="14" value={scenario.form.days} onChange={(event) => updateScenarioForm("days", Number(event.target.value))} /></label><label>Travellers<input type="number" min="1" max="12" value={scenario.form.travelers} onChange={(event) => updateScenarioForm("travelers", Number(event.target.value))} /></label><label>Budget mode<select value={scenario.form.budgetMode} onChange={(event) => updateScenarioForm("budgetMode", event.target.value)}>{budgetModes.map((mode) => <option key={mode}>{mode}</option>)}</select></label><label>Accommodation<select value={scenario.form.accommodation} onChange={(event) => updateScenarioForm("accommodation", event.target.value)}>{accommodationOptions.map((option) => <option key={option}>{option}</option>)}</select></label><label>Transport<select value={scenario.form.transportation} onChange={(event) => updateScenarioForm("transportation", event.target.value)}>{transportationOptions.map((option) => <option key={option}>{option}</option>)}</select></label><label>Travel focus<select value={scenario.form.travelStyle} onChange={(event) => updateScenarioForm("travelStyle", event.target.value)}>{travelStyles.map((style) => <option key={style}>{style}</option>)}</select></label></div><fieldset className="scenario-interests"><legend>Prioritize experiences</legend>{interests.map((interest) => <button key={interest} type="button" aria-pressed={scenario.form.interests.includes(interest)} onClick={() => { const next = scenario.form.interests.includes(interest) ? scenario.form.interests.filter((item) => item !== interest) : [...scenario.form.interests, interest]; setScenario({ ...scenario, form: { ...scenario.form, interests: next } }); }}>{interest}</button>)}</fieldset><label className="scenario-swap"><input type="checkbox" checked={scenario.replacePaidActivity} onChange={(event) => setScenario({ ...scenario, replacePaidActivity: event.target.checked })} /><span>Model a self-guided, lower-cost alternative to paid activities</span></label><div className="scenario-comparison"><article><span>YOUR CURRENT PLAN</span><strong>{rupees(estimatedTotal)}</strong><p>{trip.destination} · {trip.form.days} days · {trip.form.travelers} travellers</p><small>Budget remaining: {rupees(trip.form.budget - estimatedTotal)}</small></article><span className="scenario-arrow" aria-hidden="true">→</span><article><span>WHAT-IF SCENARIO</span><strong>{rupees(scenarioTotal)}</strong><p>{scenarioTrip.destination} · {scenario.form.days} days · {scenario.form.travelers} travellers</p><small>Budget remaining: {rupees(scenario.form.budget - scenarioTotal)}</small></article><article className="scenario-delta"><span>ESTIMATED CHANGE</span><strong className={scenarioChange <= 0 ? "saving" : "over-budget"}>{scenarioChange > 0 ? "+" : "−"}{rupees(Math.abs(scenarioChange))}</strong><p>{scenarioChangePercent > 0 ? "+" : ""}{scenarioChangePercent}% vs current plan</p></article></div><div className="scenario-cost-grid">{expenseBreakdown.map((category) => { const key = category.label === "Stay" ? "stay" : category.label === "Food" ? "food" : category.label === "Intercity transport" ? "transport" : category.label === "Local transport" ? "localTransport" : category.label === "Experiences" ? "activities" : "miscellaneous"; return <div key={category.label}><span>{category.label}</span><strong>{rupees(category.amount)} <i>→</i> {rupees(scenarioCosts[key])}</strong></div>; })}</div><ul className="scenario-changes">{scenario.form.days !== trip.form.days && <li>Duration changes to {scenario.form.days} days.</li>}{scenario.form.travelers !== trip.form.travelers && <li>Traveller count changes to {scenario.form.travelers}.</li>}{scenario.form.transportation !== trip.form.transportation && <li>Transport changes to {scenario.form.transportation}.</li>}{scenario.form.accommodation !== trip.form.accommodation && <li>Accommodation changes to {scenario.form.accommodation}.</li>}{scenario.replacePaidActivity && <li>Activity estimates are halved and paid stops become self-guided alternatives in this model.</li>}</ul><p className="scenario-assumption">Updated category estimates use the same curated per-destination rates. Self-guided activity changes model a 50% reduction in activity allocation; this is not a quoted ticket saving.</p><div className="scenario-actions"><button className="button button-outline-green" type="button" onClick={() => setScenario(null)}>Discard scenario</button><button className="button button-green" type="button" disabled={!scenario.form.interests.length} onClick={applyScenario}>Apply this scenario</button></div></>}
+        </section>
+
+        <section className="companion-panel"><div className="feature-panel-heading"><div><p className="eyebrow"><span className="eyebrow-rule" /> Grounded in your trip</p><h3>Your travel companion</h3><p>Rule-based answers from this itinerary and its curated destination notes. No external AI service is called.</p></div></div><div className="companion-prompts">{["Why did you recommend this destination?", "Can I reduce costs by 20%?", "What should I pack?", "What should I verify before travelling?"].map((prompt) => <button type="button" key={prompt} onClick={() => submitCompanionQuestion(prompt)}>{prompt}</button>)}</div><div className="companion-thread" aria-live="polite">{companionMessages.length ? companionMessages.map((message, index) => <article className="companion-message" key={`${index}-${message.question}`}><p className="companion-question">{message.question}</p><p className="companion-answer">{message.answer}</p>{message.action && <button className="text-link" type="button" onClick={() => followCompanionSuggestion(message.action)}>{message.action === "open-savings" ? "Compare lower-cost options" : "Explore one extra day"} <span aria-hidden="true">↗</span></button>}</article>) : <p className="companion-empty">Ask about your days, costs, local food, packing, or what to verify.</p>}</div><form className="companion-form" onSubmit={askTravelCompanion}><label htmlFor="companion-question">Ask about this itinerary</label><div><input id="companion-question" maxLength={300} value={companionQuestion} onChange={(event) => setCompanionQuestion(event.target.value)} placeholder="Ask about a day, budget, food, or packing" /><button className="button button-green" type="submit" disabled={!companionQuestion.trim()}>Ask</button></div></form></section>
+
+        <section className="alternative-panel"><div className="feature-panel-heading"><div><p className="eyebrow"><span className="eyebrow-rule" /> Based on your actual trip</p><h3>Other places that might fit</h3><p>Ranked by shared interests, travel style, region, season, and estimates calculated with your current preferences. No ratings or popularity claims.</p></div></div><div className="alternative-grid">{rankedAlternatives.map(({ destination, reason, estimatedDaily }) => <article key={destination.name}><p className="location-label">{destination.region} · ~{rupees(estimatedDaily)}/person/day at your preferences</p><h4>{destination.name}</h4><p>{reason}</p><div><button type="button" onClick={() => setDetailDestination(destination)}>Details</button><button type="button" onClick={() => toggleComparison(destination.name)}>Compare</button><button type="button" onClick={() => replaceTripDestination(destination)}>Use this place</button></div></article>)}</div></section>
+
+        {scenario && scenarioTrip && <p className="scenario-assumption-visible">{scenario.replacePaidActivity ? `Guided activity estimate: ${rupees(activityEstimate(scenario.form, scenarioTrip.destination, "guided"))} per group/day; self-guided estimate: ${rupees(activityEstimate(scenario.form, scenarioTrip.destination, "selfGuided"))}. Curated planning values, not live prices.` : "Scenario totals use the same destination-specific cost model as the original itinerary."}</p>}
         <p className="estimate-footnote">All amounts are illustrative estimates in Indian rupees. Seasonal advice is general and not a weather forecast.</p>
       </section>}
 

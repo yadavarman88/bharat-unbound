@@ -155,6 +155,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .planner-note-mark { color: var(--terracotta); font-size: 19px; }
 .planner-note p { margin: 0; color: var(--muted); font: italic 12px var(--serif); }
 .planner-form { padding: 28px 30px 25px; background: var(--paper); border: 1px solid #ebe9df; box-shadow: 0 12px 32px rgba(43,48,38,.045); }
+.demo-presets { margin-top: 34px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.24); }
+.demo-presets > p:nth-child(2) { max-width: 330px; color: rgba(255,255,255,.78); font: italic 12px/1.6 var(--serif); }
+.demo-presets > div { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+.demo-presets button, .profile-manager button { padding: 8px 10px; border: 1px solid #bfc9bd; background: transparent; color: var(--green); font-size: 9px; cursor: pointer; transition: background .2s ease, color .2s ease; }
+.demo-presets button { border-color: #c5a291; color: var(--green); }
+.demo-presets button:hover { background: #e2ece2; }
 .form-topline { padding-bottom: 17px; margin-bottom: 19px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; color: var(--muted); font-size: 8px; letter-spacing: 1.35px; }
 .form-row { display: grid; gap: 14px; margin-bottom: 18px; }
 .form-row-two { grid-template-columns: 1fr 1fr; }
@@ -185,6 +191,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .button-green:hover { background: var(--green-dark); }
 .planner-submit { width: 100%; margin-top: 19px; }
 .form-disclaimer { margin: 12px 0 0; color: #898b82; font-size: 8px; line-height: 1.6; text-align: center; }
+.profile-manager { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+.profile-manager > div:first-child > p:last-child { margin: 5px 0 0; color: var(--muted); font-size: 9px; }
+.profile-manager > div:nth-child(2) { display: flex; flex-wrap: wrap; justify-content: end; gap: 6px; }
+.profile-manager button:hover:not(:disabled) { background: var(--green); color: white; }
+.profile-manager button:disabled { opacity: .48; cursor: not-allowed; }
+.profile-status { grid-column: 1 / -1; margin: 0; color: var(--green); font-size: 9px; }
 
 .itinerary-section { padding: 97px 12% 100px; background: var(--paper); scroll-margin-top: 25px; }
 .itinerary-heading, .saved-heading { display: flex; align-items: end; justify-content: space-between; gap: 22px; }
@@ -194,7 +206,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .button-outline-green { border-color: #aeb9ad; background: transparent; color: var(--green); }
 .button-outline-green:hover { border-color: var(--green); background: #edf0eb; }
 .save-trip-button { margin-bottom: 4px; flex-shrink: 0; }
-.budget-metrics { margin-top: 28px; padding: 17px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.budget-metrics { margin-top: 28px; padding: 17px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
 .budget-metrics > div { display: flex; flex-direction: column; gap: 7px; }
 .budget-metrics span { color: var(--muted); font-size: 8px; letter-spacing: .8px; }
 .budget-metrics strong { font: 400 21px var(--serif); }
@@ -211,13 +223,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .expense-breakdown { padding: 20px 0; border-bottom: 1px solid var(--line); }
 .breakdown-heading { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 8px; letter-spacing: 1px; text-transform: uppercase; }
 .breakdown-heading span:last-child { color: var(--green); letter-spacing: 0; text-transform: none; }
-.breakdown-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 17px; margin-top: 17px; }
+.breakdown-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 17px; margin-top: 17px; }
 .breakdown-item > div { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .breakdown-item > div span { color: var(--muted); font-size: 9px; }
 .breakdown-item > div strong { font: 400 14px var(--serif); white-space: nowrap; }
 .breakdown-track { display: block; height: 3px; margin-top: 9px; background: #e9e7df; }
 .breakdown-track i { display: block; height: 100%; background: var(--terracotta); }
 .expense-breakdown > p { margin: 13px 0 0; color: #85877d; font-size: 9px; line-height: 1.6; }
+.expense-breakdown .contingency-note { color: var(--green); }
 .itinerary-days { margin-top: 4px; }
 .itinerary-day { display: grid; grid-template-columns: 70px 1fr; gap: 16px; padding: 23px 0; border-bottom: 1px solid var(--line); }
 .day-number { display: flex; flex-direction: column; gap: 4px; padding-top: 3px; color: var(--terracotta); }
@@ -256,6 +269,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .checklist-items label { display: flex; align-items: start; gap: 9px; color: #4e584e; font-size: 10px; line-height: 1.5; cursor: pointer; }
 .checklist-items input { flex: 0 0 auto; margin-top: 2px; accent-color: var(--green); }
 .checklist-items input:checked + span { color: #8a8c83; text-decoration: line-through; }
+.readiness-score { margin: 14px 0; display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+.readiness-score span { color: var(--muted); font-size: 9px; }
+.readiness-score strong { font: 400 20px var(--serif); color: var(--green); }
+.readiness-score i { grid-column: 1 / -1; height: 4px; background: var(--green); }
 .checklist-panel > p:last-child { margin: 13px 0 0; color: var(--muted); font-size: 8px; line-height: 1.5; }
 .explain-panel { margin-top: 18px; padding: 22px; border: 1px solid var(--line); background: var(--paper); }
 .explain-panel > div:first-child { display: inline-block; }
@@ -271,6 +288,58 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .budget-control input[type="range"] { width: 100%; height: 4px; accent-color: var(--green); cursor: pointer; }
 .range-labels { display: flex; justify-content: space-between; color: #898b82; font-size: 8px; }
 .estimate-footnote { margin: 15px 0 0; color: #888a80; font-size: 9px; }
+.feature-panel-heading { display: flex; justify-content: space-between; align-items: start; gap: 18px; }
+.feature-panel-heading h3 { margin: 9px 0 5px; font: 400 25px var(--serif); }
+.feature-panel-heading > div > p:last-child { max-width: 530px; margin: 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+.scenario-panel, .companion-panel, .alternative-panel { margin-top: 24px; padding: 22px 24px; border: 1px solid var(--line); background: var(--paper); }
+.scenario-controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 19px; }
+.scenario-controls label { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 9px; }
+.scenario-controls input, .scenario-controls select { min-width: 0; width: 100%; height: 36px; padding: 0 8px; border: 1px solid var(--line); border-radius: 0; background: var(--paper); color: var(--ink); font-size: 10px; }
+.scenario-interests { margin: 16px 0 0; padding: 0; border: 0; display: flex; flex-wrap: wrap; gap: 7px; }
+.scenario-interests legend { width: 100%; margin-bottom: 4px; color: var(--muted); font-size: 9px; }
+.scenario-interests button, .companion-prompts button { padding: 7px 9px; border: 1px solid var(--line); background: transparent; color: #51594f; font-size: 9px; cursor: pointer; }
+.scenario-interests button[aria-pressed="true"] { border-color: var(--green); background: #e8eee7; color: var(--green-dark); }
+.scenario-swap { margin-top: 16px; display: flex; gap: 9px; align-items: start; color: #4f584e; font-size: 10px; line-height: 1.5; }
+.scenario-swap input { margin-top: 2px; accent-color: var(--green); }
+.scenario-comparison { display: grid; grid-template-columns: 1fr auto 1fr 1fr; gap: 12px; align-items: stretch; margin-top: 19px; }
+.scenario-comparison article { min-width: 0; padding: 14px; border: 1px solid var(--line); background: #fbfaf6; }
+.scenario-comparison article > span { color: var(--muted); font-size: 8px; letter-spacing: .8px; }
+.scenario-comparison article > strong { display: block; margin: 8px 0 5px; font: 400 22px var(--serif); }
+.scenario-comparison article p, .scenario-comparison article small { margin: 0; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.scenario-comparison .scenario-delta strong.saving { color: var(--green); }
+.scenario-arrow { align-self: center; color: var(--terracotta); }
+.scenario-cost-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-top: 12px; }
+.scenario-cost-grid > div { padding: 10px; border: 1px solid #e9e7df; display: flex; flex-direction: column; gap: 6px; }
+.scenario-cost-grid span { color: var(--muted); font-size: 8px; }
+.scenario-cost-grid strong { font-size: 9px; font-weight: 500; }
+.scenario-cost-grid i { color: var(--terracotta); font-style: normal; }
+.scenario-changes { margin: 13px 0; padding-left: 16px; color: #535b52; font-size: 9px; line-height: 1.6; }
+.scenario-assumption { display: none; }
+.scenario-swap:has(input:checked) ~ .scenario-changes li:last-child { display: none; }
+.scenario-assumption-visible { margin: 12px 0; color: var(--muted); font-size: 9px; line-height: 1.6; }
+.scenario-actions { display: flex; justify-content: end; gap: 8px; margin-top: 15px; }
+.scenario-actions .button { min-height: 38px; }
+.companion-prompts { display: flex; flex-wrap: wrap; gap: 7px; margin: 16px 0; }
+.companion-prompts button { color: var(--green); }
+.companion-prompts button:hover { border-color: var(--green); background: #e8eee7; }
+.companion-thread { max-height: 290px; overflow-y: auto; }
+.companion-empty { color: var(--muted); font: italic 13px var(--serif); }
+.companion-message { max-width: 660px; margin: 10px 0; padding: 12px 14px; border-left: 2px solid var(--terracotta); background: #f7f5ef; }
+.companion-question { margin: 0 0 6px; color: var(--green); font-size: 10px; font-weight: 600; }
+.companion-answer { margin: 0; color: #4e574e; font-size: 10px; line-height: 1.7; }
+.companion-message .text-link { margin-top: 8px; }
+.companion-form { margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--line); }
+.companion-form > label { display: block; margin-bottom: 7px; color: var(--muted); font-size: 9px; }
+.companion-form > div { display: flex; gap: 8px; }
+.companion-form input { flex: 1; min-width: 0; height: 40px; padding: 0 11px; border: 1px solid var(--line); background: white; font-size: 10px; }
+.companion-form .button { min-height: 40px; }
+.companion-form .button:disabled { opacity: .45; cursor: not-allowed; }
+.alternative-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+.alternative-grid article { padding: 15px; border: 1px solid var(--line); background: #fbfaf6; }
+.alternative-grid h4 { margin: 7px 0; font: 400 21px var(--serif); }
+.alternative-grid article > p:not(.location-label) { min-height: 45px; margin: 0; color: var(--muted); font-size: 9px; line-height: 1.6; }
+.alternative-grid article > div { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 12px; }
+.alternative-grid button { padding: 4px 0; border: 0; border-bottom: 1px solid #c9c8bd; background: none; color: var(--green); font-size: 9px; cursor: pointer; }
 
 .saved-section { padding: 95px 12% 105px; }
 .saved-storage-note, .saved-culture-note { margin: -18px 0 24px; color: var(--muted); font-size: 9px; }
@@ -358,6 +427,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .footer-links { gap: 25px; }
   .explorer-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .destination-card-actions > span { width: 100%; }
+  .scenario-controls { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .scenario-comparison { grid-template-columns: 1fr 1fr; }
+  .scenario-arrow { display: none; }
 }
 
 @media (max-width: 700px) {
@@ -424,6 +496,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .planner-intro > p:not(.eyebrow) { margin-top: 13px; font-size: 13px; }
   .planner-note { margin-top: 18px; }
   .planner-form { padding: 23px 17px 19px; }
+    .profile-manager { grid-template-columns: 1fr; }
+    .profile-manager > div:nth-child(2) { justify-content: start; }
   .form-row { gap: 10px; }
   .form-row-three { grid-template-columns: 1fr 1fr; }
   .field-label { font-size: 9px; }
@@ -435,6 +509,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .itinerary-summary { grid-template-columns: 1fr 1fr; gap: 18px 12px; }
   .itinerary-summary > div:last-of-type { grid-column: 1 / -1; }
   .itinerary-summary strong { font-size: 17px; }
+    .budget-metrics { grid-template-columns: repeat(2, 1fr); }
+    .budget-metrics > div:first-child { grid-column: 1 / -1; }
   .budget-metrics { grid-template-columns: 1fr 1fr; gap: 16px 10px; }
   .budget-metrics strong { font-size: 18px; }
   .optimizer-panel { padding: 18px 15px; }
@@ -444,6 +520,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .tips-panel, .checklist-panel, .explain-panel { padding: 17px; }
   .breakdown-grid { grid-template-columns: 1fr 1fr; gap: 16px 12px; }
   .breakdown-heading { font-size: 7px; }
+    .breakdown-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .scenario-panel, .companion-panel, .alternative-panel { padding: 17px 14px; }
+    .feature-panel-heading { align-items: stretch; flex-direction: column; }
+    .scenario-controls { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .scenario-comparison { grid-template-columns: 1fr; }
+    .scenario-cost-grid { grid-template-columns: 1fr 1fr; }
+    .scenario-actions { align-items: stretch; flex-direction: column; }
+    .alternative-grid { grid-template-columns: 1fr; }
+    .alternative-grid article > p:not(.location-label) { min-height: 0; }
   .itinerary-day { grid-template-columns: 44px 1fr; gap: 10px; padding: 19px 0; }
   .day-number strong { font-size: 22px; }
   .day-title-row { align-items: start; flex-direction: column; gap: 6px; }
@@ -502,6 +587,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 
 @media print {
+    .itinerary-actions, .budget-control, .optimizer-options, .savings-options, .checklist-items input, .explain-panel > button, .scenario-panel, .companion-panel, .alternative-panel { display: none !important; }
   @page { margin: 16mm; }
   body { background: white; color: black; font-size: 10pt; }
   main > *:not(#itinerary) { display: none !important; }
