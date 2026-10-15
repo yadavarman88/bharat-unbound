@@ -445,6 +445,24 @@ export default function TravelExperience() {
     return () => window.cancelAnimationFrame(frame);
   }, [trip]);
 
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(""), 4500);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
+  useEffect(() => {
+    if (!detailDestination && !pendingDeleteId) return;
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setDetailDestination(null);
+        setPendingDeleteId(null);
+      }
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [detailDestination, pendingDeleteId]);
+
   function updateForm<K extends keyof TripForm>(key: K, value: TripForm[K]) {
     setForm((current) => ({ ...current, [key]: value }));
   }
@@ -710,6 +728,7 @@ export default function TravelExperience() {
         <a className="wordmark" href="#home" aria-label="Bharat Unbound home"><span className="wordmark-symbol" aria-hidden="true">B</span><span className="wordmark-type">BHARAT <span>UNBOUND</span></span></a>
         <nav className="main-nav" aria-label="Main navigation"><a href="#discover">Discover</a><a href="#destinations">Destinations</a><a href="#experiences">Experiences</a><a className="nav-plan" href="#planner">Plan a trip <span aria-hidden="true">↗</span></a></nav>
       </header>
+      {notice && <p className="global-toast" role="status">{notice}</p>}
 
       <section className="hero" id="home" style={{ backgroundImage: `linear-gradient(90deg, rgba(17,33,25,.76) 0%, rgba(17,33,25,.44) 45%, rgba(17,33,25,.08) 100%), url("${photo("photo-1524492412937-b28074a5d7da", 2200)}")` }}>
         <div className="hero-content" id="discover"><p className="eyebrow hero-eyebrow"><span className="eyebrow-rule" /> A different kind of India</p><h1>Some journeys take you places.<br /><em>Others bring you closer</em><br />to India.</h1><p className="hero-copy">Thoughtfully made journeys for the places you dream about, the stories you want to hear, and the India waiting just around the corner.</p><div className="hero-actions"><a className="button button-light" href="#planner">Create my journey <span aria-hidden="true">↗</span></a><a className="button button-outline-light" href="#destinations">Explore India <span aria-hidden="true">↓</span></a></div></div>
@@ -762,7 +781,6 @@ export default function TravelExperience() {
       </section>
 
       {trip && activeDetails && <section className="itinerary-section" id="itinerary" aria-live="polite"><div className="itinerary-heading"><div><p className="eyebrow"><span className="eyebrow-rule" /> A first draft, made for you</p><h2>{trip.name}</h2><p className="itinerary-location">{trip.destination}, {trip.state} <span>·</span> {trip.form.month} <span>·</span> {trip.form.days} days <span>·</span> {trip.form.travelers} {trip.form.travelers === 1 ? "traveler" : "travelers"}</p></div><div className="itinerary-actions"><button className="button button-outline-green" onClick={() => window.print()} type="button">Print / Save PDF <span aria-hidden="true">↗</span></button><button className="button button-green save-trip-button" onClick={saveTrip} type="button"><span aria-hidden="true">＋</span> Save this journey</button></div></div>
-        {notice && <p className="notice-message" role="status">{notice}</p>}
         <div className="budget-metrics"><div><span>ESTIMATED TRIP COST</span><strong>{rupees(estimatedTotal)}</strong></div><div><span>PER TRAVELLER</span><strong>{rupees(Math.ceil(estimatedTotal / trip.form.travelers))}</strong></div><div><span>AVERAGE / DAY</span><strong>{rupees(Math.ceil(estimatedTotal / trip.form.days))}</strong></div><div><span>BUDGET REMAINING</span><strong className={budgetRemaining < 0 ? "over-budget" : ""}>{rupees(budgetRemaining)}</strong></div><div><span>BUDGET USED</span><strong className={budgetUtilization > 100 ? "over-budget" : ""}>{budgetUtilization}%</strong></div></div>
         {budgetRemaining < 0 && <div className="budget-alert" role="status"><strong>This draft is {rupees(Math.abs(budgetRemaining))} over your budget.</strong><span>Try a guesthouse, local transport, or Budget mode below; each recalculates the estimate.</span></div>}
         <div className="itinerary-summary"><div><span>YOUR MAXIMUM BUDGET</span><strong>{rupees(trip.form.budget)}</strong></div><div><span>DESTINATION</span><strong>{activeDestination?.region}</strong></div><div><span>PLANNING FOR</span><strong>{trip.form.travelStyle} · {trip.form.budgetMode}</strong></div><p>All amounts are illustrative estimates, not live prices, bookings, or quotes. Intercity transport and personal purchases may be additional.</p></div>
@@ -792,7 +810,7 @@ export default function TravelExperience() {
           return <article className="saved-card" key={saved.id}>
             <div className="saved-image" style={{ backgroundImage: `url("${photo(destination.image, 700)}")` }} role="img" aria-label={`${saved.destination}, ${saved.state}`}>{destination.credit && <span className="photo-credit">{destination.credit}</span>}</div>
             <div className="saved-card-info"><p className="location-label">{saved.state} <span>·</span> {saved.form.days} days <span>·</span> {saved.form.month}</p>
-              {renamingTripId === saved.id ? <div className="rename-trip"><label htmlFor={`rename-${saved.id}`}>Trip name</label><input id={`rename-${saved.id}`} maxLength={60} value={tripNameDraft} onChange={(event) => setTripNameDraft(event.target.value)} /><button type="button" onClick={() => renameSavedTrip(saved.id)}>Save name</button><button type="button" onClick={() => setRenamingTripId(null)}>Cancel</button></div> : <h3>{saved.name}</h3>}
+              {renamingTripId === saved.id ? <div className="rename-trip"><label htmlFor={`rename-${saved.id}`}>Trip name</label><input id={`rename-${saved.id}`} maxLength={60} value={tripNameDraft} onChange={(event) => setTripNameDraft(event.target.value)} /><button type="button" disabled={!tripNameDraft.trim()} onClick={() => renameSavedTrip(saved.id)}>Save name</button><button type="button" onClick={() => setRenamingTripId(null)}>Cancel</button></div> : <h3>{saved.name}</h3>}
               <p>{destination.name} · {rupees(total)} estimated · {saved.form.travelers} {saved.form.travelers === 1 ? "traveler" : "travelers"}</p>
               <div className="saved-actions"><button className="text-link" onClick={() => revisitTrip(saved)} type="button">Open itinerary <span aria-hidden="true">↗</span></button><button type="button" onClick={() => { setRenamingTripId(saved.id); setTripNameDraft(saved.name); }}>Rename</button><button type="button" onClick={() => duplicateSavedTrip(saved)}>Duplicate</button><button type="button" onClick={() => setPendingDeleteId(saved.id)}>Delete</button></div>
             </div>
@@ -803,7 +821,7 @@ export default function TravelExperience() {
 
       {detailDestination && <div className="modal-backdrop" onClick={() => setDetailDestination(null)}><section className="detail-dialog" role="dialog" aria-modal="true" aria-labelledby="destination-detail-title" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => { if (event.key === "Escape") setDetailDestination(null); }}><div className="detail-hero" style={{ backgroundImage: `linear-gradient(0deg, rgba(20,38,28,.75), transparent 85%), url("${photo(detailDestination.image, 1200)}")` }}><button className="modal-close" type="button" aria-label="Close destination details" onClick={() => setDetailDestination(null)}>×</button><p className="location-label">{detailDestination.state} · {detailDestination.region}</p><h2 id="destination-detail-title">{detailDestination.name}</h2>{detailDestination.credit && <span className="photo-credit">{detailDestination.credit}</span>}</div><div className="detail-content"><p className="detail-overview">{detailDestination.description}</p><div className="detail-facts"><p><span>BEST TIME</span>{destinationDetails[detailDestination.name].bestTime}</p><p><span>SUGGESTED STAY</span>{destinationDetails[detailDestination.name].duration}</p><p><span>ROUGH DAILY RANGE</span>{rupees(destinationDetails[detailDestination.name].budgetRange[0])}–{rupees(destinationDetails[detailDestination.name].budgetRange[1])} / person</p></div><div className="detail-columns"><div><h3>Places to begin</h3><ul>{destinationDetails[detailDestination.name].highlights.map((highlight) => <li key={highlight}>{highlight}</li>)}</ul><h3>Culture & context</h3><p>{destinationDetails[detailDestination.name].culture}</p><h3>Local table</h3><p>{detailDestination.food}</p></div><div><h3>For {form.month}</h3><p>{destinationDetails[detailDestination.name].seasons[getSeason(form.month)]}</p><p className="season-guidance">General seasonal guidance, not a live forecast.</p><h3>Practical notes</h3><ul>{destinationDetails[detailDestination.name].tips.map((tip) => <li key={tip}>{tip}</li>)}</ul><h3>Nearby ideas</h3><p>{destinationDetails[detailDestination.name].nearby.join(" · ")}</p></div></div><button className="button button-green" type="button" onClick={() => { const selected = detailDestination; setDetailDestination(null); exploreDestination(selected); }}>Add {detailDestination.name} to my trip <span aria-hidden="true">↗</span></button></div></section></div>}
 
-      {pendingDeleteId && <div className="modal-backdrop" onClick={() => setPendingDeleteId(null)}><section className="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="delete-title" onClick={(event) => event.stopPropagation()}><h2 id="delete-title">Delete this saved journey?</h2><p>This only removes the saved copy from this browser.</p><div><button className="button button-outline-green" type="button" onClick={() => setPendingDeleteId(null)}>Keep it</button><button className="button button-danger" type="button" onClick={confirmDeleteSavedTrip}>Delete journey</button></div></section></div>}
+      {pendingDeleteId && <div className="modal-backdrop" onClick={() => setPendingDeleteId(null)}><section className="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="delete-title" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => { if (event.key === "Escape") setPendingDeleteId(null); }}><h2 id="delete-title">Delete this saved journey?</h2><p>This only removes the saved copy from this browser.</p><div><button className="button button-outline-green" type="button" onClick={() => setPendingDeleteId(null)}>Keep it</button><button className="button button-danger" type="button" onClick={confirmDeleteSavedTrip}>Delete journey</button></div></section></div>}
 
       <section className="closing-banner" style={{ backgroundImage: `linear-gradient(90deg, rgba(20,41,29,.83), rgba(20,41,29,.24)), url("${photo("photo-1518005020951-eccb494ad742", 1800)}")` }}><p className="eyebrow"><span className="eyebrow-rule" /> The best part is still ahead</p><h2>Leave room for<br /><em>the unexpected.</em></h2><a className="button button-light" href="#planner">Find your way in <span aria-hidden="true">↗</span></a></section>
 

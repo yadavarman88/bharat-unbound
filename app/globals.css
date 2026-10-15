@@ -40,6 +40,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .main-nav a:hover, .footer-links a:hover { color: var(--terracotta); }
 .main-nav .nav-plan { color: var(--green); border-bottom: 1px solid var(--terracotta); padding: 9px 0; }
 .nav-plan span { color: var(--terracotta); margin-left: 7px; }
+.global-toast { position: fixed; z-index: 30; right: 24px; bottom: 22px; max-width: min(560px, calc(100vw - 48px)); margin: 0; padding: 13px 17px; border: 1px solid #c6d3c5; background: var(--green-dark); color: white; box-shadow: 0 8px 28px rgba(20,31,24,.2); font-size: 11px; line-height: 1.5; animation: rise-in .18s ease both; }
 
 .hero { min-height: min(690px, calc(100svh - 74px)); height: 610px; max-height: 760px; position: relative; display: flex; align-items: center; background-color: #455449; background-size: cover; background-position: center 43%; color: white; }
 .hero-content { width: min(700px, 76%); margin-left: 12.2%; padding-bottom: 24px; animation: rise-in .9s ease both; }
@@ -101,6 +102,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .destination-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 13px; margin-top: 13px; }
 .destination-card-actions > span { margin-right: auto; color: var(--muted); font-size: 9px; }
 .destination-card-actions button, .saved-actions > button:not(.text-link) { padding: 4px 0; border: 0; border-bottom: 1px solid #c9c8bd; background: none; color: var(--green); font-size: 9px; cursor: pointer; }
+.destination-card-actions button, .saved-actions > button { min-height: 36px; }
 .destination-card-actions button:hover, .saved-actions > button:hover { color: var(--terracotta); border-color: var(--terracotta); }
 .explorer-empty { padding: 30px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 18px; color: var(--muted); font: italic 15px var(--serif); }
 .explorer-empty p { margin: 0; }
@@ -155,11 +157,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .planner-note-mark { color: var(--terracotta); font-size: 19px; }
 .planner-note p { margin: 0; color: var(--muted); font: italic 12px var(--serif); }
 .planner-form { padding: 28px 30px 25px; background: var(--paper); border: 1px solid #ebe9df; box-shadow: 0 12px 32px rgba(43,48,38,.045); }
-.demo-presets { margin-top: 34px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.24); }
-.demo-presets > p:nth-child(2) { max-width: 330px; color: rgba(255,255,255,.78); font: italic 12px/1.6 var(--serif); }
+.demo-presets { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--line); }
+.demo-presets > p:nth-child(2) { max-width: 330px; color: var(--muted); font: italic 12px/1.6 var(--serif); }
 .demo-presets > div { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
 .demo-presets button, .profile-manager button { padding: 8px 10px; border: 1px solid #bfc9bd; background: transparent; color: var(--green); font-size: 9px; cursor: pointer; transition: background .2s ease, color .2s ease; }
-.demo-presets button { border-color: #c5a291; color: var(--green); }
+.demo-presets button { min-height: 38px; border-color: #c5a291; color: var(--green); }
 .demo-presets button:hover { background: #e2ece2; }
 .form-topline { padding-bottom: 17px; margin-bottom: 19px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; color: var(--muted); font-size: 8px; letter-spacing: 1.35px; }
 .form-row { display: grid; gap: 14px; margin-bottom: 18px; }
@@ -298,6 +300,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .scenario-interests { margin: 16px 0 0; padding: 0; border: 0; display: flex; flex-wrap: wrap; gap: 7px; }
 .scenario-interests legend { width: 100%; margin-bottom: 4px; color: var(--muted); font-size: 9px; }
 .scenario-interests button, .companion-prompts button { padding: 7px 9px; border: 1px solid var(--line); background: transparent; color: #51594f; font-size: 9px; cursor: pointer; }
+.scenario-interests button, .companion-prompts button { min-height: 38px; }
 .scenario-interests button[aria-pressed="true"] { border-color: var(--green); background: #e8eee7; color: var(--green-dark); }
 .scenario-swap { margin-top: 16px; display: flex; gap: 9px; align-items: start; color: #4f584e; font-size: 10px; line-height: 1.5; }
 .scenario-swap input { margin-top: 2px; accent-color: var(--green); }
@@ -435,6 +438,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 @media (max-width: 700px) {
   html { scroll-padding-top: 64px; }
   .site-header { height: 64px; padding: 0 5%; }
+  .global-toast { right: 12px; bottom: 12px; left: 12px; max-width: none; }
   .wordmark { gap: 8px; }
   .wordmark-symbol { width: 29px; height: 29px; font-size: 20px; }
   .wordmark-type { font-size: 9px; letter-spacing: 1px; }
@@ -543,6 +547,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .saved-image { height: clamp(125px, 37vw, 210px); }
   .saved-card-info { padding: 12px; }
   .saved-card h3 { font-size: 20px; }
+  .round-arrow { width: 42px; height: 42px; }
   .saved-actions { gap: 8px 10px; }
   .saved-actions > button { font-size: 8px; }
   .remove-trip { margin: 12px 0 0; display: block; }
